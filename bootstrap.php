@@ -6,6 +6,13 @@
 
 defined('FRONTPRESS_BOOT') || exit;
 
+// Back-compat: pre-rename installs gate config.php on `MD_BOOT`. Mirror the
+// constant so an un-migrated config.php still loads. Safe to remove once
+// users have had a release or two to update their config.
+if (!defined('MD_BOOT')) {
+    define('MD_BOOT', true);
+}
+
 require_once __DIR__ . '/cms/vendor/autoload.php';
 require_once __DIR__ . '/cms/lib/template_helpers.php';
 
