@@ -142,6 +142,11 @@ class Index
             // URL: pages are flat, everything else keeps folder prefix
             $url = $folder === 'pages' ? '/' . $slug : '/' . $relPath;
 
+            $excerpt = isset($meta['excerpt']) ? trim((string)$meta['excerpt']) : '';
+            if ($excerpt === '') {
+                $excerpt = self::deriveExcerpt($file->getPathname());
+            }
+
             $posts[$relPath] = [
                 'slug'       => $slug,
                 'folder'     => $folder,
@@ -149,6 +154,7 @@ class Index
                 'url'        => $url,
                 'title'      => $meta['title'] ?? $slug,
                 'date'       => $date,
+                'excerpt'    => $excerpt,
                 'categories' => (array)($meta['categories'] ?? []),
                 'tags'       => (array)($meta['tags'] ?? []),
                 'draft'      => !empty($meta['draft']),
@@ -178,6 +184,50 @@ class Index
         $s = strtolower(trim($s));
         $s = preg_replace('/[^a-z0-9]+/', '-', $s) ?? '';
         return trim($s, '-');
+    }
+
+    /**
+     * Derive a plain-text excerpt from the body of a Markdown file when the
+     * post's front matter doesn't include an explicit `excerpt:`. Strips
+     * front matter, common Markdown syntax, and inline HTML, then returns
+     * the first ~160 characters as a sentence-friendly snippet.
+     *
+     * Themes that read `post.excerpt` can now rely on it being non-empty
+     * for any post that has body content, without forcing every author to
+     * write a manual excerpt. Explicit front-matter `excerpt:` still wins.
+     */
+    private static function deriveExcerpt(string $absPath, int $maxLen = 160): string
+    {
+        $raw = @file_get_contents($absPath);
+        if ($raw === false) return '';
+
+        // Strip front matter (the leading --- ... --- block).
+        $body = preg_replace('/^---\r?\n.*?\r?\n---\r?\n/s', '', $raw, 1) ?? $raw;
+
+        // Drop fenced code blocks, then images, then bracketed shortcodes.
+        $body = preg_replace('/```.*?```/s', '', $body) ?? $body;
+        $body = preg_replace('/!\[[^\]]*\]\([^)]*\)/', '', $body) ?? $body;
+        $body = preg_replace('/\[[a-z][^\]]*\]/i', '', $body) ?? $body;
+
+        // Markdown link → label only: [label](url) → label.
+        $body = preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $body) ?? $body;
+
+        // Strip HTML tags and remaining Markdown emphasis/heading/quote markers.
+        $body = strip_tags($body);
+        $body = preg_replace('/^[#>\-*+]+\s*/m', '', $body) ?? $body;
+        $body = preg_replace('/[*_`~]+/', '', $body) ?? $body;
+
+        // Collapse whitespace.
+        $body = trim(preg_replace('/\s+/u', ' ', $body) ?? '');
+        if ($body === '') return '';
+
+        if (function_exists('mb_strlen') && mb_strlen($body) > $maxLen) {
+            $cut = mb_substr($body, 0, $maxLen);
+            $sp  = mb_strrpos($cut, ' ');
+            if ($sp !== false && $sp > $maxLen / 2) $cut = mb_substr($cut, 0, $sp);
+            return rtrim($cut, " \t\n\r.,;:") . '…';
+        }
+        return $body;
     }
 
     /**
