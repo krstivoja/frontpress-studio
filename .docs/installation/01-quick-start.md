@@ -4,7 +4,7 @@ Five minutes from zero to a running CMS.
 
 ## On shared hosting (the typical case)
 
-1. Download the latest `frontpress-studio-<version>.zip` from [GitHub Releases](https://github.com/krstivoja/mdframework/releases).
+1. Download the latest `frontpress-studio-<version>.zip` from [GitHub Releases](https://github.com/krstivoja/frontpress-studio/releases).
 2. Unzip its **contents** directly into your domain's document root (`public_html/`, `htdocs/example.com/`, whatever your host calls it). The folder should sit alongside any existing files the way WordPress lives next to `wp-config.php`:
 
    ```
@@ -30,8 +30,8 @@ That's it. The default `blank` theme is active. Visit `/` and you'll see an empt
 If you want to work on FrontPress Studio itself (or hack on a theme with the dev server), clone the source:
 
 ```bash
-git clone https://github.com/krstivoja/mdframework.git
-cd mdframework/app
+git clone https://github.com/krstivoja/frontpress-studio.git
+cd frontpress-studio/app
 composer install --working-dir=cms     # PHP deps
 ```
 

@@ -76,4 +76,4 @@ your-domain/
 
 ## Where to file issues
 
-GitHub: <https://github.com/krstivoja/mdframework/issues>.
+GitHub: <https://github.com/krstivoja/frontpress-studio/issues>.

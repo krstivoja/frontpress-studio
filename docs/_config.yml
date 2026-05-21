@@ -1,14 +1,14 @@
-title: MD Framework
+title: FrontPress Studio
 description: Ultralight flat-file CMS built in PHP. No database. Markdown files on disk, browser-based admin.
 theme: jekyll-theme-minimal
-url: https://krstivoja.github.io
-baseurl: /mdframework
+url: https://frontpress.studio
+baseurl: /docs
 
 show_downloads: false
 github:
   is_project_page: true
-  repository_url: https://github.com/krstivoja/mdframework
-  repository_name: krstivoja/mdframework
+  repository_url: https://github.com/krstivoja/frontpress-studio
+  repository_name: krstivoja/frontpress-studio
   owner_name: krstivoja
   owner_url: https://github.com/krstivoja
 

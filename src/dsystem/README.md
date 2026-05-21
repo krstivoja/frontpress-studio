@@ -15,8 +15,8 @@ The two surfaces are intentionally different: the admin is a tool (productive, d
 
 ## Sources
 
-- **GitHub:** `krstivoja/mdframework` (default branch `main`, commit `f8dc90f`)
-- Live docs (Jekyll, GitHub Pages): `https://krstivoja.github.io/mdframework/`
+- **GitHub:** `krstivoja/frontpress-studio` (default branch `main`, commit `f8dc90f`)
+- Live docs: `https://frontpress.studio/docs`
 - Key files read:
   - `cms/src/admin.css` — the primary design-system source (33 KB, tokens + components)
   - `cms/templates/*.php` — admin screens (layout, pages, edit, media, login, backup, settings, themes, starters)

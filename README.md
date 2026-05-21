@@ -30,7 +30,7 @@ In wordpress you would need to use ACF or Metabox to get this
 
 Ultralight flat-file CMS built in PHP. No database. Content is Markdown files on disk; the admin is a browser UI at `/admin`.
 
-- **Docs:** https://krstivoja.github.io/mdframework/
+- **Docs:** https://frontpress.studio/docs
 - **Releases:** https://github.com/krstivoja/frontpress-studio/releases
 
 ## Requirements
@@ -49,7 +49,7 @@ Download `frontpress-studio-<version>.zip` from [Releases](https://github.com/kr
 
 ```bash
 git clone https://github.com/krstivoja/frontpress-studio.git
-cd mdframework/app
+cd frontpress-studio/app
 composer install --working-dir=cms
 
 # Admin SPA (React + Vite)

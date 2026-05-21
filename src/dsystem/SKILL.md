@@ -1,5 +1,5 @@
 ---
-name: mdframework-design
+name: frontpress-studio-design
 description: Use this skill to generate well-branded interfaces and assets for FrontPress Studio (the ultralight flat-file PHP CMS), either for production or throwaway prototypes/mocks. Contains essential design guidelines, colors, type, fonts, assets, and UI-kit components for prototyping both the admin app (shadcn-flavored B&W) and the default public theme (warm cream + purple link).
 user-invocable: true
 ---

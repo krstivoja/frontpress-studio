@@ -10,7 +10,7 @@ FrontPress Studio updates itself in-place from your GitHub Releases. No FTP, no 
 
 What happens:
 
-1. The new release zip is downloaded from `github.com/krstivoja/mdframework/releases/download/<tag>/frontpress-studio-<version>.zip` to `site/cache/updates/`.
+1. The new release zip is downloaded from `github.com/krstivoja/frontpress-studio/releases/download/<tag>/frontpress-studio-<version>.zip` to `site/cache/updates/`.
 2. SHA-256 is verified against the release manifest.
 3. A manifest of files-to-replace is computed (everything under `cms/`, `admin/`, `bootstrap.php`, `index.php`, `admin.php`, `.htaccess` — *not* `site/` or `config.php`).
 4. Files are atomically replaced via rename-aside-then-delete: each file is written next to its target as `.new`, then renamed over the original. If any step fails midway, the partial state is rolled back.

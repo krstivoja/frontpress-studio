@@ -89,7 +89,7 @@ Actions does the rest.
 
 Same `./scripts/build-release.sh` locally, then:
 
-1. Upload `dist/frontpress-studio-<version>.zip` to <https://github.com/krstivoja/mdframework/releases/new>.
+1. Upload `dist/frontpress-studio-<version>.zip` to <https://github.com/krstivoja/frontpress-studio/releases/new>.
 2. Tag it `v<version>` matching `cms/VERSION`.
 3. Paste the changelog excerpt as the release body.
 4. Compute the SHA-256 (`shasum -a 256 dist/frontpress-studio-<version>.zip`).
@@ -99,7 +99,7 @@ Same `./scripts/build-release.sh` locally, then:
    {
      "version": "0.0.78",
      "tag": "v0.0.78",
-     "zip": "https://github.com/krstivoja/mdframework/releases/download/v0.0.78/frontpress-studio-0.0.78.zip",
+     "zip": "https://github.com/krstivoja/frontpress-studio/releases/download/v0.0.78/frontpress-studio-0.0.78.zip",
      "sha256": "...",
      "changelog_excerpt": "..."
    }

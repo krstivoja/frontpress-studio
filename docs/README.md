@@ -2,7 +2,7 @@
 
 This folder is the source for the FrontPress Studio documentation site, published via GitHub Pages with Jekyll and the [just-the-docs](https://github.com/just-the-docs/just-the-docs) remote theme.
 
-**Live site:** https://krstivoja.github.io/mdframework/
+**Live site:** https://frontpress.studio/docs
 
 ## Local preview (optional)
 

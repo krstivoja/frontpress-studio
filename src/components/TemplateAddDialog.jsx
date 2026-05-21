@@ -4,7 +4,7 @@ import useFocusTrap from '../lib/useFocusTrap.js';
 import { api } from '../lib/api.js';
 import { Alert, Button, Field, Input, SegmentedControl, Select } from './ui/index.js';
 
-// Standard mdframework template kinds we know how to seed from.
+// Standard FrontPress Studio template kinds we know how to seed from.
 // "blank" doesn't read from disk — see `blankStub()` below.
 const STARTER_KINDS = ['page', 'post', 'archive', 'taxonomy', 'feed', '404'];
 

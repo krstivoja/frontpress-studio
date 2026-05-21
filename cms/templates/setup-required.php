@@ -148,7 +148,7 @@ define('MD_ADMIN_PASS_HASH', '');</code></pre>
 
   <p>Paste the output as the value of <code>MD_ADMIN_PASS_HASH</code>, then reload this page.</p>
 
-  <p class="footer">Full instructions: <a href="https://krstivoja.github.io/mdframework/admin/" target="_blank" rel="noopener">Admin docs</a>.</p>
+  <p class="footer">Full instructions: <a href="https://frontpress.studio/docs/admin/" target="_blank" rel="noopener">Admin docs</a>.</p>
 </main>
 <script>
   // Clipboard API where available; fall back to a temporary textarea +
