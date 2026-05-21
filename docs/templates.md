@@ -286,7 +286,7 @@ Files whose basename starts with `_` (`_tokens.scss`, `_forms.scss`) are treated
 
 #### When it runs
 
-With **`MD_APP_ENV=dev`** (the default in the shipped `config.php`), every **public-site** request runs `FrontPress\ScssCompiler::compileTheme()`. The freshness check is the *newest mtime under the entire `assets/` tree* compared against each entry's compiled `.css` — touch any partial or import, every dependent entry recompiles. Cheap on hot cache: one `RecursiveDirectoryIterator` walk and one `stat()` per entry.
+With **`FPS_APP_ENV=dev`** (the default in the shipped `config.php`), every **public-site** request runs `FrontPress\ScssCompiler::compileTheme()`. The freshness check is the *newest mtime under the entire `assets/` tree* compared against each entry's compiled `.css` — touch any partial or import, every dependent entry recompiles. Cheap on hot cache: one `RecursiveDirectoryIterator` walk and one `stat()` per entry.
 
 **Admin requests don't trigger SCSS compile** — `admin.php` doesn't run `bootstrap.php`. To pick up an `.scss` edit, refresh the public site (`/`) once; the admin sees the new CSS on its next reload because both surfaces serve from the same `/assets/style.css`.
 

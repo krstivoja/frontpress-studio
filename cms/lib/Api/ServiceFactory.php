@@ -115,9 +115,10 @@ final class ServiceFactory
     /**
      * Build the configured Mailer. SMTP credentials come from
      * `site/config.json:email`, except for the password — if the JSON
-     * value is empty, we fall back to the `MD_SMTP_PASS` constant from
-     * `config.php`. Lets operators keep real credentials off the
-     * gitignored-or-not JSON file when they prefer.
+     * value is empty, we fall back to the `FPS_SMTP_PASS` constant from
+     * `config.php` (legacy `MD_SMTP_PASS` also accepted). Lets operators
+     * keep real credentials off the gitignored-or-not JSON file when they
+     * prefer.
      *
      * @param array<string, mixed> $config
      */

@@ -53,23 +53,47 @@ class EnvTest extends TestCase
 
     public function testUpgradePlaintextPasswordReplacesHashAndRemovesPlaintext(): void
     {
+        // Fresh-install shape: shipped config.php uses FPS_* names.
+        file_put_contents($this->tmp, <<<'PHP'
+<?php
+defined('FRONTPRESS_BOOT') || exit;
+define('FPS_ADMIN_USER', 'admin');
+define('FPS_ADMIN_PASS', 'admin');
+define('FPS_ADMIN_PASS_HASH', '');
+define('FPS_APP_ENV', 'dev');
+PHP);
+        $hash = '$2y$10$dummyhashvaluefortest1234567890123456789012';
+        $this->assertTrue(Env::upgradePlaintextPassword($this->tmp, $hash));
+
+        $out = (string)file_get_contents($this->tmp);
+        $this->assertStringContainsString("define('FPS_ADMIN_PASS_HASH', '" . addslashes($hash) . "');", $out);
+        $this->assertStringNotContainsString("FPS_ADMIN_PASS,", $out);
+        $this->assertStringNotContainsString("'FPS_ADMIN_PASS'", $out);
+        $this->assertSame($hash, Env::get('ADMIN_PASS_HASH'));
+        $this->assertNull(Env::get('ADMIN_PASS'));
+    }
+
+    public function testUpgradeMigratesLegacyMdConstantsToFps(): void
+    {
+        // Pre-rename install: config.php still uses MD_* names. First
+        // rewrite (e.g. password rotate) should migrate them to FPS_*.
         file_put_contents($this->tmp, <<<'PHP'
 <?php
 defined('FRONTPRESS_BOOT') || exit;
 define('MD_ADMIN_USER', 'admin');
 define('MD_ADMIN_PASS', 'admin');
 define('MD_ADMIN_PASS_HASH', '');
-define('MD_APP_ENV', 'dev');
 PHP);
         $hash = '$2y$10$dummyhashvaluefortest1234567890123456789012';
         $this->assertTrue(Env::upgradePlaintextPassword($this->tmp, $hash));
 
         $out = (string)file_get_contents($this->tmp);
-        $this->assertStringContainsString("define('MD_ADMIN_PASS_HASH', '" . addslashes($hash) . "');", $out);
-        $this->assertStringNotContainsString("MD_ADMIN_PASS,", $out);
-        $this->assertStringNotContainsString("'MD_ADMIN_PASS'", $out);
-        $this->assertSame($hash, Env::get('ADMIN_PASS_HASH'));
-        $this->assertNull(Env::get('ADMIN_PASS'));
+        // New name written.
+        $this->assertStringContainsString("define('FPS_ADMIN_PASS_HASH', '" . addslashes($hash) . "');", $out);
+        // Legacy hash define replaced (not duplicated).
+        $this->assertSame(0, preg_match('/define\(\s*[\'"]MD_ADMIN_PASS_HASH[\'"]/', $out));
+        // Legacy plaintext line scrubbed.
+        $this->assertSame(0, preg_match('/define\(\s*[\'"]MD_ADMIN_PASS[\'"]/', $out));
     }
 
     public function testUpgradePreservesDollarSignsInBcryptHash(): void
@@ -80,7 +104,7 @@ PHP);
         file_put_contents($this->tmp, <<<'PHP'
 <?php
 defined('FRONTPRESS_BOOT') || exit;
-define('MD_ADMIN_PASS_HASH', '');
+define('FPS_ADMIN_PASS_HASH', '');
 PHP);
         // Real bcrypt hash for 'admin' — contains `$2y$10$` which is the
         // exact pattern that triggered the bug.
@@ -95,24 +119,24 @@ PHP);
     public function testUpgradeHandlesGetenvFallbackForm(): void
     {
         // Regression: when the operator opts into the plaintext
-        // MD_ADMIN_PASS shape using `getenv(...) ?: '...'`, the upgrade
+        // FPS_ADMIN_PASS shape using `getenv(...) ?: '...'`, the upgrade
         // must rewrite that line, not append a duplicate `define()`
         // (which PHP would warn about and ignore).
         file_put_contents($this->tmp, <<<'PHP'
 <?php
 defined('FRONTPRESS_BOOT') || exit;
-define('MD_ADMIN_USER',      getenv('MD_ADMIN_USER')      ?: 'admin');
-define('MD_ADMIN_PASS',      getenv('MD_ADMIN_PASS')      ?: 'admin');
-define('MD_ADMIN_PASS_HASH', getenv('MD_ADMIN_PASS_HASH') ?: '');
+define('FPS_ADMIN_USER',      getenv('FPS_ADMIN_USER')      ?: 'admin');
+define('FPS_ADMIN_PASS',      getenv('FPS_ADMIN_PASS')      ?: 'admin');
+define('FPS_ADMIN_PASS_HASH', getenv('FPS_ADMIN_PASS_HASH') ?: '');
 PHP);
         $hash = '$2y$10$AHxA3GCxYYTXhKqRRJVvZumiM5Sw2DL6/GYzxZPxMvOpYso1GXgvi';
         $this->assertTrue(Env::upgradePlaintextPassword($this->tmp, $hash));
         $out = (string)file_get_contents($this->tmp);
-        $this->assertStringContainsString("define('MD_ADMIN_PASS_HASH', '" . $hash . "');", $out);
-        // Should be exactly one MD_ADMIN_PASS_HASH define after upgrade.
-        $this->assertSame(1, substr_count($out, 'MD_ADMIN_PASS_HASH'));
+        $this->assertStringContainsString("define('FPS_ADMIN_PASS_HASH', '" . $hash . "');", $out);
+        // Should be exactly one FPS_ADMIN_PASS_HASH define after upgrade.
+        $this->assertSame(1, substr_count($out, 'FPS_ADMIN_PASS_HASH'));
         // Plaintext line gone.
-        $this->assertSame(0, preg_match('/define\(\s*[\'"]MD_ADMIN_PASS[\'"]/', $out));
+        $this->assertSame(0, preg_match('/define\(\s*[\'"]FPS_ADMIN_PASS[\'"]/', $out));
     }
 
     public function testUpgradeAppendsHashWhenAbsent(): void
@@ -120,11 +144,11 @@ PHP);
         file_put_contents($this->tmp, <<<'PHP'
 <?php
 defined('FRONTPRESS_BOOT') || exit;
-define('MD_ADMIN_USER', 'admin');
+define('FPS_ADMIN_USER', 'admin');
 PHP);
         $hash = '$2y$10$dummyhashvaluefortest1234567890123456789012';
         $this->assertTrue(Env::upgradePlaintextPassword($this->tmp, $hash));
-        $this->assertStringContainsString("define('MD_ADMIN_PASS_HASH', '" . addslashes($hash) . "');", (string)file_get_contents($this->tmp));
+        $this->assertStringContainsString("define('FPS_ADMIN_PASS_HASH', '" . addslashes($hash) . "');", (string)file_get_contents($this->tmp));
     }
 
     public function testIsPasswordDefaultTrueWhenHashVerifiesAdmin(): void

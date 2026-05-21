@@ -69,7 +69,7 @@ On submit:
 
 1. `POST /admin/api/password` validates everything server-side.
 2. Bcrypt-hashes the new password.
-3. Atomically rewrites `config.php` with the new `MD_ADMIN_PASS_HASH`.
+3. Atomically rewrites `config.php` with the new `FPS_ADMIN_PASS_HASH`.
 4. Refreshes the session so the "Set a strong admin password" banner clears.
 
 Also on this screen:

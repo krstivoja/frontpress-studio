@@ -135,8 +135,8 @@
     <pre><code id="snippet-env">&lt;?php
 defined('FRONTPRESS_BOOT') || exit;
 
-define('MD_ADMIN_USER', 'admin');
-define('MD_ADMIN_PASS_HASH', '');</code></pre>
+define('FPS_ADMIN_USER', 'admin');
+define('FPS_ADMIN_PASS_HASH', '');</code></pre>
     <button type="button" class="copy-btn" data-copy-target="snippet-env">Copy</button>
   </div>
 
@@ -146,7 +146,7 @@ define('MD_ADMIN_PASS_HASH', '');</code></pre>
     <button type="button" class="copy-btn" data-copy-target="snippet-hash">Copy</button>
   </div>
 
-  <p>Paste the output as the value of <code>MD_ADMIN_PASS_HASH</code>, then reload this page.</p>
+  <p>Paste the output as the value of <code>FPS_ADMIN_PASS_HASH</code>, then reload this page.</p>
 
   <p class="footer">Full instructions: <a href="https://frontpress.studio/docs/admin/" target="_blank" rel="noopener">Admin docs</a>.</p>
 </main>

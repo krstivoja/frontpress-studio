@@ -7,12 +7,38 @@ namespace FrontPress\Api;
 defined('FRONTPRESS_BOOT') || exit;
 
 use FrontPress\Env;
+use FrontPress\Updater;
 
 class AuthController
 {
-    public static function me(): void
+    /** @param array<string, mixed> $config */
+    public static function me(array $config = []): void
     {
         $user = $_SESSION['admin_user'] ?? null;
+
+        // Update-check info is only included for authenticated sessions —
+        // calling GitHub's API on every unauthenticated /me probe would
+        // burn rate limit, and an attacker probing /me shouldn't get free
+        // version intel either. The result is cached on disk for 6h so an
+        // authenticated user reloading the admin shell every few seconds
+        // doesn't generate one GitHub call per reload.
+        $update = null;
+        if ($user !== null && isset($config['appRoot'])) {
+            $updater = new Updater((string)$config['appRoot']);
+            $current = $updater->currentVersion();
+            $latest  = $updater->cachedCheckLatest();
+            $update  = [
+                'current'   => $current,
+                'latest'    => $latest['version'] ?? null,
+                'available' => $latest
+                    ? version_compare($latest['version'], $current, '>')
+                    : false,
+                // Trimmed: full release notes can be megabytes. The sidebar
+                // banner only needs enough to identify the release.
+                'notes'     => $latest ? mb_substr((string)($latest['notes'] ?? ''), 0, 400) : '',
+            ];
+        }
+
         \json_response([
             'ok'                => true,
             'authenticated'     => $user !== null,
@@ -22,6 +48,8 @@ class AuthController
             // password" banner; safe to expose pre-auth since it's a boolean,
             // not a credential.
             'passwordIsDefault' => Env::isPasswordDefault(),
+            // Null for unauthenticated probes (see above).
+            'update'            => $update,
         ]);
     }
 

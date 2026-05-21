@@ -4,16 +4,29 @@ import { api, setCsrf, setUnauthorizedHandler } from './api.js';
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [state, setState] = useState({ status: 'loading', user: null, passwordIsDefault: false });
+  const [state, setState] = useState({
+    status: 'loading',
+    user: null,
+    passwordIsDefault: false,
+    update: null,
+  });
 
   const refresh = useCallback(async () => {
     try {
       const me = await api.get('/me');
       setCsrf(me.csrf);
-      setState({ status: 'ready', user: me.user, passwordIsDefault: !!me.passwordIsDefault });
+      setState({
+        status: 'ready',
+        user: me.user,
+        passwordIsDefault: !!me.passwordIsDefault,
+        // Authenticated payload includes { current, latest, available, notes };
+        // unauthenticated probe omits it (null), and the sidebar banner
+        // skips render in that case.
+        update: me.update || null,
+      });
     } catch {
       setCsrf('');
-      setState({ status: 'ready', user: null, passwordIsDefault: false });
+      setState({ status: 'ready', user: null, passwordIsDefault: false, update: null });
     }
   }, []);
 
@@ -25,7 +38,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setCsrf('');
-      setState({ status: 'ready', user: null, passwordIsDefault: false });
+      setState({ status: 'ready', user: null, passwordIsDefault: false, update: null });
     });
     return () => setUnauthorizedHandler(null);
   }, []);
@@ -42,7 +55,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try { await api.post('/logout'); } catch { /* ignore */ }
     setCsrf('');
-    setState({ status: 'ready', user: null, passwordIsDefault: false });
+    setState({ status: 'ready', user: null, passwordIsDefault: false, update: null });
     await refresh();
   }, [refresh]);
 

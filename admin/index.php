@@ -58,10 +58,11 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 $ADMIN_USER      = FrontPress\Env::get('ADMIN_USER', 'fpsadmin');
 $ADMIN_PASS_HASH = FrontPress\Env::get('ADMIN_PASS_HASH', '');
 
-// First-run convenience: if the operator drops a plaintext MD_ADMIN_PASS
-// line into config.php (instead of the shipped pre-hashed default), hash
-// it now and rewrite config.php so subsequent requests see only the
-// hash. Plaintext is removed from disk in a single atomic write.
+// First-run convenience: if the operator drops a plaintext FPS_ADMIN_PASS
+// (or legacy MD_ADMIN_PASS) line into config.php instead of the shipped
+// pre-hashed default, hash it now and rewrite config.php so subsequent
+// requests see only the hash. Plaintext is removed from disk in a single
+// atomic write.
 if ($ADMIN_PASS_HASH === '') {
     $plain = (string)FrontPress\Env::get('ADMIN_PASS', '');
     if ($plain !== '') {

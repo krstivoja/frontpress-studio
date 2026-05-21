@@ -3,10 +3,10 @@
 defined('FRONTPRESS_BOOT') || exit;
 
 // ── Admin login ───────────────────────────────────────────────────────────
-define('MD_ADMIN_USER',      getenv('MD_ADMIN_USER')      ?: 'fpsadmin');
-define('MD_ADMIN_PASS_HASH', '$2y$12$WFAGSzJ9ZtvcWNDLg8IXDeNCOWOoaHlmyNoFM2wBaagpx.wJ0V4k6');
+define('FPS_ADMIN_USER',      getenv('FPS_ADMIN_USER')      ?: 'fpsadmin');
+define('FPS_ADMIN_PASS_HASH', '$2y$12$WFAGSzJ9ZtvcWNDLg8IXDeNCOWOoaHlmyNoFM2wBaagpx.wJ0V4k6');
 
 // ── Runtime ───────────────────────────────────────────────────────────────
-define('MD_APP_ENV',              getenv('MD_APP_ENV')              ?: 'dev');
-define('MD_APP_DEBUG',            getenv('MD_APP_DEBUG')            ?: '0');
-define('MD_SESSION_IDLE_SECONDS', getenv('MD_SESSION_IDLE_SECONDS') ?: '7200');
+define('FPS_APP_ENV',              getenv('FPS_APP_ENV')              ?: 'dev');
+define('FPS_APP_DEBUG',            getenv('FPS_APP_DEBUG')            ?: '0');
+define('FPS_SESSION_IDLE_SECONDS', getenv('FPS_SESSION_IDLE_SECONDS') ?: '7200');

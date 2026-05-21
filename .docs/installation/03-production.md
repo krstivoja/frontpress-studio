@@ -20,11 +20,11 @@ php -r "echo password_hash('your-real-password', PASSWORD_BCRYPT);"
 ```
 
 ```php
-define('MD_ADMIN_USER',      'youruser');
-define('MD_ADMIN_PASS_HASH', '$2y$12$…');   // replace with the generated hash
+define('FPS_ADMIN_USER',      'youruser');
+define('FPS_ADMIN_PASS_HASH', '$2y$12$…');   // replace with the generated hash
 ```
 
-With `MD_ADMIN_PASS_HASH` set, the auto-hash step is skipped. The default `fpspass` plaintext never touches disk.
+With `FPS_ADMIN_PASS_HASH` set, the auto-hash step is skipped. The default `fpspass` plaintext never touches disk.
 
 ## 2. Set `APP_ENV=prod`
 

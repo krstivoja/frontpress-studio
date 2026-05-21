@@ -26,7 +26,7 @@ class Router
         try {
             switch ($resource) {
                 case 'me':
-                    AuthController::me();
+                    AuthController::me($config);
                     return;
                 case 'login':
                     AuthController::login($method, $config);

@@ -15,21 +15,23 @@ Visit `/admin/` in a browser.
 The framework ships with a `config.php` carrying a friendly default — username `fpsadmin`, password `fpspass`, already pre-hashed:
 
 ```php
-define('MD_ADMIN_USER',      getenv('MD_ADMIN_USER') ?: 'fpsadmin');
-define('MD_ADMIN_PASS_HASH', '$2y$12$Se9J1HL9cltJyftHLaykGuP8pidNbtds0WR02Vl2JyUGNfJaQe7Le');
+define('FPS_ADMIN_USER',      getenv('FPS_ADMIN_USER') ?: 'fpsadmin');
+define('FPS_ADMIN_PASS_HASH', '$2y$12$Se9J1HL9cltJyftHLaykGuP8pidNbtds0WR02Vl2JyUGNfJaQe7Le');
 ```
 
 You sign in once, get nagged by a persistent "Set a strong admin password" banner, and rotate the password under **Settings → Security**.
 
+> **Upgrading from a pre-rename install?** Legacy `MD_*` constants in `config.php` are still read silently — the framework prefers `FPS_*` but falls back to `MD_*` if only that's defined. The first config rewrite (password rotate, username change) migrates the affected lines to `FPS_*` automatically. No action required.
+
 ### Plaintext shortcut (optional)
 
-If you'd rather pick the initial password yourself before first login, swap the hash line in `config.php` for a plaintext `MD_ADMIN_PASS`:
+If you'd rather pick the initial password yourself before first login, swap the hash line in `config.php` for a plaintext `FPS_ADMIN_PASS`:
 
 ```php
-define('MD_ADMIN_PASS', 'pickapassword');
+define('FPS_ADMIN_PASS', 'pickapassword');
 ```
 
-On the first request to `/admin/`, the plaintext is bcrypt-hashed and `config.php` is rewritten atomically to `define('MD_ADMIN_PASS_HASH', '…')` (the plaintext line is removed). Subsequent requests see only the hash. `MD_ADMIN_PASS_HASH` wins if both are present.
+On the first request to `/admin/`, the plaintext is bcrypt-hashed and `config.php` is rewritten atomically to `define('FPS_ADMIN_PASS_HASH', '…')` (the plaintext line is removed). Subsequent requests see only the hash. `FPS_ADMIN_PASS_HASH` wins if both are present.
 
 ### Production: hash from day one
 
@@ -40,12 +42,12 @@ php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"
 ```
 
 ```php
-define('MD_ADMIN_PASS_HASH', '$2y$12$...');
+define('FPS_ADMIN_PASS_HASH', '$2y$12$...');
 ```
 
 ### If `config.php` isn't writable
 
-If the web server can't rewrite `config.php` (read-only filesystem, wrong file owner), the in-memory hash still works for the current request and login succeeds — but the next request will see the plaintext again and re-hash it. The error is logged via `error_log()`. Fix file permissions or set `MD_ADMIN_PASS_HASH` directly to break the cycle.
+If the web server can't rewrite `config.php` (read-only filesystem, wrong file owner), the in-memory hash still works for the current request and login succeeds — but the next request will see the plaintext again and re-hash it. The error is logged via `error_log()`. Fix file permissions or set `FPS_ADMIN_PASS_HASH` directly to break the cycle.
 
 ### First-run banner
 

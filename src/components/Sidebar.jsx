@@ -3,6 +3,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { useFolders } from '../lib/hooks.js';
 import { cap } from '../lib/utils.js';
 import SidebarLink from './SidebarLink.jsx';
+import SidebarUpdateBanner from './SidebarUpdateBanner.jsx';
 import { IconBackup, IconBrush, IconCog, IconFolder, IconImage } from './icons.jsx';
 
 // Sidebar — logo, divider-separated sections (folders / media / settings /
@@ -45,6 +46,10 @@ export default function Sidebar() {
           <SidebarLink to="/backup" icon={IconBackup}>Backup</SidebarLink>
         </Section>
       </nav>
+
+      {/* Renders nothing when no update is available — keeps the footer
+          flush with the nav on the happy path. */}
+      <SidebarUpdateBanner />
 
       <Divider />
       <div className="flex items-center justify-between gap-2 px-4 py-3 text-[13px]">

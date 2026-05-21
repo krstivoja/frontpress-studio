@@ -37,10 +37,10 @@ Click **Send a test email**. The diagnostic panel right below the form returns t
 Site config is JSON on disk. If you'd rather not commit your SMTP password to `site/config.json`, leave the password field empty in the UI and define a PHP constant in `config.php` instead:
 
 ```php
-define('MD_SMTP_PASS', 'your-real-password');
+define('FPS_SMTP_PASS', 'your-real-password');
 ```
 
-`ServiceFactory::mailer()` reads `MD_SMTP_PASS` whenever the JSON value is blank. Mirrors how `MD_ADMIN_PASS_HASH` works.
+`ServiceFactory::mailer()` reads `FPS_SMTP_PASS` whenever the JSON value is blank. Mirrors how `FPS_ADMIN_PASS_HASH` works. (Legacy `MD_SMTP_PASS` is still accepted on pre-rename installs.)
 
 ### Provider quick-reference
 

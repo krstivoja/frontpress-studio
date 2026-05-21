@@ -74,6 +74,65 @@ class Updater
     }
 
     /**
+     * Cached version of `checkLatest()` — disk-backed at
+     * `site/cache/update-check.json`, refreshed at most once every
+     * `$ttlSeconds` (default 6 hours). Lets us surface "update available"
+     * info on every authenticated `/me` call without hammering GitHub's
+     * unauthenticated API rate limit (60 req/hour/IP).
+     *
+     * Cache structure: `{ "checked_at": <epoch>, "result": <checkLatest()-shape>|null }`.
+     * A `null` result is also cached so a failed GitHub call doesn't get
+     * retried on every page load.
+     *
+     * @return array<string, string>|null
+     */
+    public function cachedCheckLatest(int $ttlSeconds = 21600): ?array
+    {
+        $cacheFile = $this->appRoot . '/site/cache/update-check.json';
+        $now       = time();
+
+        if (is_file($cacheFile)) {
+            $raw    = (string)@file_get_contents($cacheFile);
+            $cached = $raw ? json_decode($raw, true) : null;
+            if (is_array($cached)
+                && isset($cached['checked_at'])
+                && ($now - (int)$cached['checked_at']) < $ttlSeconds
+            ) {
+                $result = $cached['result'] ?? null;
+                return is_array($result) ? $result : null;
+            }
+        }
+
+        $fresh = $this->checkLatest();
+
+        // Best-effort write. Cache failures are not fatal — we'll just
+        // re-check on the next request.
+        $dir = dirname($cacheFile);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        @file_put_contents(
+            $cacheFile,
+            (string)json_encode(['checked_at' => $now, 'result' => $fresh], JSON_UNESCAPED_SLASHES),
+        );
+
+        return $fresh;
+    }
+
+    /**
+     * Force-discard the cached check. Called after a successful apply()
+     * so the post-update version comparison doesn't keep advertising the
+     * just-installed release as "available".
+     */
+    public function clearUpdateCheckCache(): void
+    {
+        $cacheFile = $this->appRoot . '/site/cache/update-check.json';
+        if (is_file($cacheFile)) {
+            @unlink($cacheFile);
+        }
+    }
+
+    /**
      * Hosts allowed for update ZIP downloads. GitHub redirects releases through
      * codeload.github.com; api.github.com is the metadata host.
      */
@@ -182,6 +241,11 @@ class Updater
 
         $zip->close();
         unlink($tmpZip);
+
+        // Invalidate the cached check so the sidebar banner disappears on
+        // the next /me round-trip instead of waiting out the TTL while
+        // still pointing at the version we just installed.
+        $this->clearUpdateCheckCache();
 
         // Migrations are NOT auto-run. The admin must invoke them explicitly via
         // runMigrations() (e.g. through the dedicated update/migrate endpoint).
