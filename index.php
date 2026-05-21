@@ -43,7 +43,7 @@ if (str_starts_with($url, '/uploads/')) {
         not_found($url);
         exit;
     }
-    if (!preg_match('/\.(jpe?g|png|gif|webp|svg|avif)$/i', $rel)) {
+    if (!preg_match('/\.(jpe?g|png|gif|webp|svg|avif|mp4|webm|mov|m4v|ogv|ogg)$/i', $rel)) {
         not_found($url);
         exit;
     }
@@ -61,6 +61,10 @@ if (str_starts_with($url, '/uploads/')) {
             'png'  => 'image/png',  'gif'  => 'image/gif',
             'webp' => 'image/webp', 'svg'  => 'image/svg+xml',
             'avif' => 'image/avif',
+            'mp4'  => 'video/mp4', 'm4v'  => 'video/mp4',
+            'webm' => 'video/webm',
+            'mov'  => 'video/quicktime',
+            'ogv'  => 'video/ogg',  'ogg'  => 'video/ogg',
         ];
         header('Content-Type: ' . ($mimes[$ext] ?? 'application/octet-stream'));
         header('Content-Length: ' . filesize($real));
