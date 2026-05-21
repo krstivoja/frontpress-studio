@@ -103,28 +103,58 @@ if (!function_exists('asset_url')) {
 
 if (!function_exists('paginate')) {
     /**
-     * Render the prev / "Page X of Y" / next nav block used by archive and
-     * taxonomy templates. Returns an empty string when there's only one page.
+     * Render the pagination nav block used by archive and taxonomy templates.
+     * Returns an empty string when there's only one page.
      *
      * `$baseUrl` is the URL for page 1 (no trailing slash); subsequent pages
      * append `/page/N`.
+     *
+     * `$style` controls the markup:
+     *   - "numbers"   (default) — `1 2 3 … N`, current highlighted via `.current`
+     *   - "prev_next" (legacy)  — `← Prev | Page X of Y | Next →`
+     *
+     * When `$style` is null, the default is read from `pagination.style` in
+     * `site/config.json`, falling back to "numbers".
      */
-    function paginate(int $page, int $totalPages, string $baseUrl): string
+    function paginate(int $page, int $totalPages, string $baseUrl, ?string $style = null): string
     {
         if ($totalPages <= 1) return '';
 
-        $base = e($baseUrl);
-        $prevHref = $page === 2 ? $base : $base . '/page/' . ($page - 1);
-        $nextHref = $base . '/page/' . ($page + 1);
+        if ($style === null) {
+            $cfg = $GLOBALS['fp_config'] ?? null;
+            if ($cfg && method_exists($cfg, 'get')) {
+                $pag   = (array)$cfg->get('pagination', []);
+                $style = (string)($pag['style'] ?? 'numbers');
+            } else {
+                $style = 'numbers';
+            }
+        }
 
-        $out  = '<nav class="pagination">';
-        if ($page > 1) {
-            $out .= '<a href="' . $prevHref . '">&larr; Prev</a>';
+        $base = e($baseUrl);
+        $href = static function (int $n) use ($base): string {
+            return $n === 1 ? $base : $base . '/page/' . $n;
+        };
+
+        $out = '<nav class="pagination" aria-label="Pagination">';
+
+        if ($style === 'prev_next') {
+            if ($page > 1) {
+                $out .= '<a href="' . $href($page - 1) . '" rel="prev">&larr; Prev</a>';
+            }
+            $out .= '<span>Page ' . $page . ' of ' . $totalPages . '</span>';
+            if ($page < $totalPages) {
+                $out .= '<a href="' . $href($page + 1) . '" rel="next">Next &rarr;</a>';
+            }
+        } else {
+            for ($n = 1; $n <= $totalPages; $n++) {
+                if ($n === $page) {
+                    $out .= '<span class="current" aria-current="page">' . $n . '</span>';
+                } else {
+                    $out .= '<a href="' . $href($n) . '">' . $n . '</a>';
+                }
+            }
         }
-        $out .= '<span>Page ' . $page . ' of ' . $totalPages . '</span>';
-        if ($page < $totalPages) {
-            $out .= '<a href="' . $nextHref . '">Next &rarr;</a>';
-        }
+
         $out .= '</nav>';
         return $out;
     }
