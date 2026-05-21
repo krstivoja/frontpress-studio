@@ -16,10 +16,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
   --color-muted: #6b6b6b;
   --color-rule: #e5e5e5;
   --max-w: 720px;
+
+  /* Optional "framed page" pattern. Set --max-w-page to a value like
+     1920px and pick a contrasting --page-frame-bg (e.g. #000) to render
+     the body as a capped wrapper with a colored frame on wider viewports.
+     Defaults are no-ops so the starter looks blank out of the box. */
+  --max-w-page:    none;
+  --page-frame-bg: var(--color-bg);
 }
 
-html { font-family: var(--font-sans); color: var(--color-fg); background: var(--color-bg); line-height: 1.55; }
-body { padding: 2rem 1rem; }
+html { font-family: var(--font-sans); color: var(--color-fg); background: var(--page-frame-bg); line-height: 1.55; }
+body {
+  max-width: var(--max-w-page);
+  margin-inline: auto;
+  padding: 2rem 1rem;
+  background: var(--color-bg);
+  overflow-x: clip; /* contain any full-bleed children inside the wrapper */
+}
 
 /* --- centred content column --- */
 .container { max-width: var(--max-w); margin-inline: auto; }
