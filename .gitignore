@@ -11,6 +11,11 @@ public/cms/dist/
 src/dist/
 **/.vite/
 .vite-hot
+# Vite's hashed React bundle. CI rebuilds these on every release and
+# rsync ships them in the zip, so tracking them in git just bloats
+# commit diffs with renamed-asset noise. Developers cloning the repo
+# run `cd src && npm run build` once (or `npm run dev` for HMR).
+admin/assets/
 
 # ──────────────────────────────────────────────────────────────────
 # /site is fully user-owned, never tracked. Defaults (config, content,
