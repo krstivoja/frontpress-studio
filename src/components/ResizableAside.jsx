@@ -75,7 +75,10 @@ export default function ResizableAside({
     document.body.style.cursor     = '';
     document.body.style.userSelect = '';
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* already released */ }
-    persist(widthRef.current);
+    // setState callback reads the latest queued value — defensive
+    // against React batching corner cases where widthRef.current
+    // could lag a frame behind the last pointermove's setWidth call.
+    setWidth((w) => { persist(w); return w; });
   }
 
   function onDoubleClick() {

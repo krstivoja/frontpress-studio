@@ -61,6 +61,15 @@ npm run build  # production assets to ../admin/assets/
 
 See the [full docs](https://frontpress.studio/docs) for directory layout, theming, caching, and the extending guide.
 
+## Using FrontPress with Claude Code
+
+Every install ships two Claude skills under `.claude/skills/`:
+
+- **`frontpress-theme`** — theme authoring, content modelling, front-matter schema, fields and forms configurator. Auto-loads when Claude works inside `site/themes/<name>/` or `site/content/`.
+- **`frontpress-cms`** — framework internals: PHP classes under `cms/lib/`, REST controllers, the update + backup pipelines. Auto-loads when Claude touches `cms/` or root entry-point PHP.
+
+Open your install's root directory in [Claude Code](https://claude.com/claude-code) and the skills auto-discover from `.claude/skills/` — no "connect site folder" step. Claude will know how the CMS works, how fields and taxonomies map to front matter, and how to build a theme without you having to re-explain it every session.
+
 ## Sponsor
 
 FrontPress Studio is built and maintained by [Marko Krstić](https://markokrstic.com) in the open. If it saves you time, please consider sponsoring — it directly funds new features, docs, and maintenance.
