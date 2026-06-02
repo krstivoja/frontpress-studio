@@ -2,6 +2,7 @@ import { publicUrl } from '../lib/utils.js';
 import { Button, DatePicker, Field, SegmentedControl, Select } from './ui/index.js';
 import FeaturedImageField from './FeaturedImageField.jsx';
 import PageFields from './PageFields.jsx';
+import ResizableAside from './ResizableAside.jsx';
 
 /**
  * Right-hand pane of the page editor. Owns the Save / Preview / Slug /
@@ -35,7 +36,14 @@ export default function PageEditorSidebar({
   setDirty,
 }) {
   return (
-    <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-zinc-200 bg-white">
+    <ResizableAside
+      storageKey="fp_meta_w"
+      side="left"
+      defaultWidth={288}
+      min={240}
+      max={680}
+      className="flex flex-col overflow-y-auto border-l border-zinc-200 bg-white"
+    >
       <div className="flex flex-col gap-3 p-4">
         <div className="flex gap-2">
 
@@ -156,6 +164,6 @@ export default function PageEditorSidebar({
           setTaxValues(prev => ({ ...prev, [slug]: value }));
         }}
       />
-    </aside>
+    </ResizableAside>
   );
 }

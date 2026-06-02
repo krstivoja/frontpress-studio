@@ -5,6 +5,7 @@ import { cap } from '../lib/utils.js';
 import SidebarLink from './SidebarLink.jsx';
 import SidebarUpdateBanner from './SidebarUpdateBanner.jsx';
 import { IconBackup, IconBrush, IconCog, IconFolder, IconImage } from './icons.jsx';
+import ResizableAside from './ResizableAside.jsx';
 
 // Sidebar — logo, divider-separated sections (folders / media / settings /
 // backup), and a simple "Hi {user} — Log out" footer. No group labels.
@@ -13,7 +14,14 @@ export default function Sidebar() {
   const { folders } = useFolders();
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-200 bg-white">
+    <ResizableAside
+      storageKey="fp_nav_w"
+      side="right"
+      defaultWidth={240}
+      min={180}
+      max={420}
+      className="flex flex-col border-r border-zinc-200 bg-white"
+    >
       <div className="flex items-center gap-2 px-4 py-4">
         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-[12px] font-bold text-white">
           F
@@ -63,7 +71,7 @@ export default function Sidebar() {
           Log out
         </button>
       </div>
-    </aside>
+    </ResizableAside>
   );
 }
 

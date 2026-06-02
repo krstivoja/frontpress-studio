@@ -8,8 +8,12 @@ import { forwardRef } from 'react';
 // than a caller's `w-36` / `w-56`, silently winning and stretching toolbar
 // controls. The component picks `w-full` only when the caller hasn't supplied
 // their own width class.
+// Hover state: subtle border darkening + soft shadow so unfocused
+// controls visibly respond to the cursor without competing with the
+// focus state's chunky ring. transition-colors → transition so the
+// shadow animates in as smoothly as the border colour does.
 export const baseControlCls =
-  'flex h-9 rounded-md border border-zinc-200 bg-white px-3 text-[13px] text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/15 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500';
+  'flex h-9 rounded-md border border-zinc-200 bg-white px-3 text-[13px] text-zinc-900 placeholder:text-zinc-400 transition hover:border-zinc-300 hover:shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900/15 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500 disabled:hover:border-zinc-200 disabled:hover:shadow-none';
 
 const widthClassRE = /(^|\s)(w-|min-w-|max-w-)/;
 export const hasWidthClass = (cls) => widthClassRE.test(cls || '');
