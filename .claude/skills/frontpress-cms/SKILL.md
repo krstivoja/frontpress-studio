@@ -184,6 +184,17 @@ All defined in `cms/lib/template_helpers.php`, registered in `cms/lib/TemplateRe
 
 Twig globals: `config` (array of `site/config.json`), `query` (mirror of `$_GET`).
 
+## Global PHP helpers (in `bootstrap.php`)
+
+These live in the global namespace — themes call them directly from PHP templates / partials. NOT available in Twig (the partial layer is how Twig templates reach them).
+
+| Function | Purpose |
+|----------|---------|
+| `posts($args = [])` | Query the content index. Args: `folder`, `filter`, `orderby`, `order`, `limit`, `offset`. Returns the same shape as `posts` in `archive.twig`. Backed by `Index::filter()` / `Index::get()`. |
+| `render($template, $vars = [])` | Render a theme template by name (no extension). PHP wins if both `.php` and `.twig` exist with the same name. |
+
+For theme authors, see the `frontpress-theme` skill for the PHP-partial pattern (`_<name>.php`) that's used to call `posts()` from Twig themes.
+
 ## REST API surface
 
 Routes prefixed `/admin/api/`. All require session unless noted. Mutations require `X-CSRF-Token`.
