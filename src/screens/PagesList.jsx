@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getCsrf } from '../lib/api.js';
 import { usePageTrash } from '../lib/usePageTrash.js';
 import { cap } from '../lib/utils.js';
-import { Button, Dropzone, Input, Select } from '../components/ui/index.js';
-import { IconSearch } from '../components/icons.jsx';
+import { Button, Dropzone } from '../components/ui/index.js';
 import PageRow from '../components/PageRow.jsx';
+import PagesFilterBar from '../components/PagesFilterBar.jsx';
 import PagesListEmptyState from '../components/PagesListEmptyState.jsx';
 
 // Mirrors dsystem ui_kit `PagesList.jsx` — card-wrapped, header with count
@@ -61,6 +61,23 @@ export default function PagesList() {
     });
     return sorted;
   }, [data, folder, statusFilter, query, sort]);
+
+  // Status-chip counts. Computed from the folder + search filtered list but
+  // BEFORE the status filter, so each chip shows how many posts it would
+  // surface regardless of which chip is currently active.
+  const statusCounts = useMemo(() => {
+    let list = data?.pages || [];
+    if (folder) list = list.filter(p => (p.folder || '') === folder);
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(p =>
+        (p.title || '').toLowerCase().includes(q) ||
+        (p.path  || '').toLowerCase().includes(q)
+      );
+    }
+    const drafts = list.filter(p => !!p.draft).length;
+    return { all: list.length, drafts, published: list.length - drafts };
+  }, [data, folder, query]);
 
   // Drop selections that aren't visible after a filter change so the bulk
   // toolbar count never lies about what "Delete selected" will affect.
@@ -187,41 +204,15 @@ export default function PagesList() {
       </div>
 
       <div className="rounded-lg border border-zinc-200 bg-white shadow-card">
-        <header className="border-b border-zinc-100 px-6 py-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
-                {IconSearch}
-              </span>
-              <Input
-                className="w-full pl-9"
-                placeholder="Search…"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-              />
-            </div>
-            <Select
-              className="w-36"
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-            >
-              <option value="">All statuses</option>
-              <option value="live">Live</option>
-              <option value="draft">Draft</option>
-            </Select>
-            <Select
-              className="w-40"
-              value={sort}
-              onChange={e => setSort(e.target.value)}
-              aria-label="Sort"
-            >
-              <option value="date-desc">Date — newest</option>
-              <option value="date-asc">Date — oldest</option>
-              <option value="title-asc">Title — A→Z</option>
-              <option value="title-desc">Title — Z→A</option>
-            </Select>
-          </div>
-        </header>
+        <PagesFilterBar
+          query={query}
+          setQuery={setQuery}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          sort={sort}
+          setSort={setSort}
+          counts={statusCounts}
+        />
 
       {folder && importOpen && (
         <div id="pages-import-region" className="space-y-3 border-b border-zinc-100 bg-zinc-50 px-6 py-5">
