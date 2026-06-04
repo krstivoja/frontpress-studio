@@ -4,7 +4,7 @@ import { useFolders } from '../lib/hooks.js';
 import { cap } from '../lib/utils.js';
 import SidebarLink from './SidebarLink.jsx';
 import SidebarUpdateBanner from './SidebarUpdateBanner.jsx';
-import { IconBackup, IconBrush, IconCog, IconFolder, IconImage } from './icons.jsx';
+import { IconBackup, IconBrush, IconCog, IconFolder, IconGrid, IconImage } from './icons.jsx';
 import ResizableAside from './ResizableAside.jsx';
 
 // Sidebar — logo, divider-separated sections (folders / media / settings /
@@ -40,6 +40,7 @@ export default function Sidebar() {
         <Section>
           <SidebarLink to="/media" icon={IconImage}>Global media</SidebarLink>
           <SidebarLink to="/theme-builder" icon={IconBrush}>Theme builder</SidebarLink>
+          <SidebarLink to="/fields" icon={IconGrid}>Fields</SidebarLink>
         </Section>
 
         <Divider />

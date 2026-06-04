@@ -6,7 +6,6 @@ export default function Settings() {
       <h1 className="text-xl font-semibold">Settings</h1>
       <nav className="flex gap-1 border-b border-zinc-200 text-sm">
         <Tab to="/settings" end>Site settings</Tab>
-        <Tab to="/settings/fields">Manage fields</Tab>
         <Tab to="/settings/themes">Themes</Tab>
         <Tab to="/settings/reference">Theme reference</Tab>
         <Tab to="/settings/seo">SEO</Tab>

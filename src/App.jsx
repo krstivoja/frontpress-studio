@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from './lib/auth.jsx';
 
 import Protected from './components/Protected.jsx';
@@ -43,10 +43,13 @@ export default function App() {
           <Route element={<PaddedOutlet />}>
             <Route path="/"          element={<PagesList />} />
             <Route path="/media"     element={<Lazy><Media /></Lazy>} />
+            <Route path="/fields"    element={<Lazy><Fields /></Lazy>} />
+            {/* Fields moved out of Settings (0.4.x). Redirect old bookmarks /
+                docs links so they don't hit NotFound. */}
+            <Route path="/settings/fields" element={<Navigate to="/fields" replace />} />
             <Route path="/backup"    element={<Lazy><Backup /></Lazy>} />
             <Route path="/settings"  element={<Lazy><Settings /></Lazy>}>
               <Route index           element={<Lazy><SiteSettings /></Lazy>} />
-              <Route path="fields"   element={<Lazy><Fields /></Lazy>} />
               <Route path="themes"    element={<Lazy><Themes /></Lazy>} />
               <Route path="reference" element={<Lazy><ThemeReference /></Lazy>} />
               <Route path="seo"          element={<Lazy><SeoSettings /></Lazy>} />

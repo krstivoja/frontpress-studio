@@ -42,7 +42,7 @@ export default function Fields() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Manage fields</h2>
+        <h1 className="text-xl font-semibold">Fields</h1>
         <div className="flex items-center gap-3">
           {saved && <span className="text-xs text-emerald-600">Saved</span>}
           <Button onClick={() => save.mutate()} disabled={save.isPending}>
