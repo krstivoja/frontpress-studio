@@ -1,57 +1,92 @@
-/* Canonical design tokens — single source of truth for the admin.
-   Lives at app/src/dsystem/colors_and_type.css. Imported into @layer base so
-   Tailwind utilities (in @layer utilities) win over the dsystem `*` reset and
-   `body { … }` rules; otherwise unlayered dsystem CSS would override them. */
+/* ─────────────────────────────────────────────────────────────────────────────
+ * FrontPress Studio — admin styles + design tokens
+ *
+ * Single file: Tailwind import, the @theme token layer, and the base reset.
+ * (Formerly split into tokens.css + a re-aliasing bridge; collapsed because
+ * the tokens reference Tailwind's own palette anyway — there's no
+ * framework-agnostic layer left to keep separate.)
+ *
+ * Color model: semantic tokens are defined DIRECTLY in @theme and source
+ * from Tailwind v4's built-in oklch palette (`--color-zinc-*`,
+ * `--color-red-*`, …). So `bg-zinc-900` and `text-text-2` resolve to the
+ * same oklch values and never drift. oklch renders wider-gamut than the
+ * old sRGB hex on P3 displays.
+ *
+ * @theme is what GENERATES the utilities: `--color-surface` →
+ * `bg-surface`/`text-surface`/`border-surface`; `--shadow-card` →
+ * `shadow-card`. Plain :root vars would not create any utilities.
+ * ───────────────────────────────────────────────────────────────────────────── */
 @import "tailwindcss";
-@import "./dsystem/colors_and_type.css" layer(base);
 
-/* Bind Tailwind's color utilities to the dsystem zinc scale + semantic aliases.
-   Only colors are aliased — radii, fonts, and spacing keep Tailwind's defaults
-   to avoid name collisions with the same `--radius-*` / `--font-*` keys
-   already defined on :root by the dsystem file. */
 @theme {
-  --color-zinc-50:  var(--zinc-50);
-  --color-zinc-100: var(--zinc-100);
-  --color-zinc-200: var(--zinc-200);
-  --color-zinc-300: var(--zinc-300);
-  --color-zinc-400: var(--zinc-400);
-  --color-zinc-500: var(--zinc-500);
-  --color-zinc-600: var(--zinc-600);
-  --color-zinc-700: var(--zinc-700);
-  --color-zinc-800: var(--zinc-800);
-  --color-zinc-900: var(--zinc-900);
-  --color-zinc-950: var(--zinc-950);
+  /* ── Surface / text semantics → Tailwind zinc (oklch) ─────────────────────
+     Utilities: bg-surface, bg-surface-2, border-border, text-text-2, etc. */
+  --color-bg:           var(--color-zinc-50);
+  --color-surface:      #ffffff;
+  --color-surface-2:    var(--color-zinc-100);
+  --color-border:       var(--color-zinc-200);
+  --color-border-light: var(--color-zinc-100);
+  --color-text:         var(--color-zinc-950);
+  --color-text-2:       var(--color-zinc-700);
+  --color-text-muted:   var(--color-zinc-500);
 
-  /* Semantic surface/text aliases — write `bg-surface`, `text-text-2`, etc. */
-  --color-bg:           var(--bg);
-  --color-surface:      var(--surface);
-  --color-surface-2:    var(--surface-2);
-  --color-border:       var(--border);
-  --color-border-light: var(--border-light);
-  --color-text:         var(--text);
-  --color-text-2:       var(--text-2);
-  --color-text-muted:   var(--text-muted);
+  --color-primary:       var(--color-zinc-950);
+  --color-primary-fg:    #ffffff;
+  --color-primary-hover: var(--color-zinc-800);
 
-  --color-primary:        var(--primary);
-  --color-primary-fg:     var(--primary-fg);
-  --color-primary-hover:  var(--primary-hover);
-  --color-danger:         var(--danger);
-  --color-danger-hover:   var(--danger-hover);
-  --color-danger-fg:      var(--danger-fg);
-  --color-danger-soft-bg: var(--danger-soft-bg);
-  --color-danger-soft-br: var(--danger-soft-br);
-  --color-success:        var(--success);
-  --color-success-soft:   var(--success-soft-bg);
-  --color-warning-soft:   var(--warning-soft-bg);
-  --color-warning-soft-fg: var(--warning-soft-fg);
+  /* ── Status → Tailwind red / green / amber (oklch) ────────────────────────
+     1:1 with Tailwind swatches; white stays #fff (colorspace-agnostic). */
+  --color-danger:          var(--color-red-600);
+  --color-danger-hover:    var(--color-red-700);
+  --color-danger-fg:       #ffffff;
+  --color-danger-soft-bg:  var(--color-red-50);
+  --color-danger-soft-br:  var(--color-red-200);
+  --color-success:         var(--color-green-700);
+  --color-success-soft:    var(--color-green-100);
+  --color-warning-soft:    var(--color-amber-100);
+  --color-warning-soft-fg: var(--color-amber-800);
 
-  /* Three-step elevation system — generates `shadow-card`,
-     `shadow-popover`, `shadow-modal` utilities. See the dsystem
-     `colors_and_type.css` for the underlying recipes and the surfaces
-     each level is intended for. */
-  --shadow-card:    var(--elevation-1);
-  --shadow-popover: var(--elevation-2);
-  --shadow-modal:   var(--elevation-3);
+  /* ── Elevation → shadow-card / shadow-popover / shadow-modal ──────────────
+     Three-step system per Refactoring UI Ch. 6: each is a soft ambient
+     shadow + a tighter contact shadow so the lift reads as physical depth.
+       card     → cards, sidebar, list, badge background
+       popover  → popover, menu, hover lift, dropdown
+       modal    → modal, dialog, full-page sheet */
+  --shadow-card:    0 1px 2px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .04);
+  --shadow-popover: 0 4px 6px -1px rgba(0, 0, 0, .07), 0 2px 4px -2px rgba(0, 0, 0, .05);
+  --shadow-modal:   0 12px 32px rgba(0, 0, 0, .12), 0 2px 4px rgba(0, 0, 0, .06);
+
+  /* Pure system sans for the admin (also drives the `font-sans` utility +
+     preflight body font). Mono stays Tailwind's built-in `--font-mono`. */
+  --font-sans: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Base reset + body. In @layer base so Tailwind utilities always win over
+   the blanket reset and the body defaults. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-zinc-950);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);   /* Tailwind's built-in radius token */
+  }
+
+  /* Tailwind v4 dropped the default cursor on `<button>`. Restore it so every
+     non-disabled button shows a pointer without per-component opt-in. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 html, body, #root {
@@ -71,15 +106,6 @@ html, body, #root {
    Force it to claim the whole flex parent so the editor stretches with
    the page. */
 .toastui-editor-defaultUI { min-width: 100%; }
-
-/* Tailwind v4 dropped the default cursor on `<button>`. Restore it so every
-   non-disabled button in the admin shows a pointer without per-component opt-in. */
-@layer base {
-  button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]) {
-    cursor: pointer;
-  }
-}
 
 /* Indeterminate progress bar — slides a short pill back and forth.
    Used by long-running operations (GitHub push, etc.) where we have no
