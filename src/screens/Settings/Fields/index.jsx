@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api.js';
-import { slugify } from '../../../lib/utils.js';
-import { Alert, Button, Card, Input } from '../../../components/ui/index.js';
+import { Alert, Button, Card } from '../../../components/ui/index.js';
 import TaxonomyRow from './TaxonomyRow.jsx';
+import FieldGroupAddDialog from './FieldGroupAddDialog.jsx';
 
 export default function Fields() {
   const qc = useQueryClient();
@@ -61,16 +61,25 @@ export default function Fields() {
 }
 
 function TaxonomiesEditor({ taxonomies, onChange, folders }) {
-  const [newLabel, setNewLabel] = useState('');
+  const [adding, setAdding] = useState(false);
+  const slugs = Object.keys(taxonomies);
 
-  function addTaxonomy() {
-    const slug = slugify(newLabel);
+  // Which group is open. Tracked here, not in props — the parent only
+  // owns the data. Kept valid as groups are added/removed/renamed below.
+  const [active, setActive] = useState(slugs[0] || null);
+  useEffect(() => {
+    if (slugs.length === 0) { if (active !== null) setActive(null); return; }
+    if (!active || !taxonomies[active]) setActive(slugs[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taxonomies]);
+
+  function addTaxonomy(slug, label) {
     if (!slug || taxonomies[slug]) return;
     onChange({
       ...taxonomies,
-      [slug]: { label: newLabel, post_types: [], fields: [] },
+      [slug]: { label, post_types: [], fields: [] },
     });
-    setNewLabel('');
+    setActive(slug); // jump straight to the new group
   }
 
   function updateTax(slug, patch) {
@@ -85,44 +94,77 @@ function TaxonomiesEditor({ taxonomies, onChange, folders }) {
       next[k === oldSlug ? nextSlug : k] = v;
     }
     onChange(next);
+    if (active === oldSlug) setActive(nextSlug);
   }
 
   function removeTax(slug) {
     const next = { ...taxonomies };
     delete next[slug];
     onChange(next);
+    if (active === slug) {
+      const remaining = Object.keys(next);
+      setActive(remaining[0] || null);
+    }
   }
 
   return (
     <div className="space-y-4">
-      {Object.keys(taxonomies).length === 0 && (
-        <p className="text-sm text-zinc-500">No fields yet. Add one below.</p>
-      )}
+      {/* Chip tabs: one per field group. Switching shows only that group's
+          editor below, so a long list of groups doesn't become a long
+          scroll. The trailing "+ New" reveals an inline name input. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {Object.entries(taxonomies).map(([slug, tax]) => {
+          const isActive = slug === active;
+          const count = (tax.fields || []).length;
+          return (
+            <button
+              key={slug}
+              type="button"
+              onClick={() => setActive(slug)}
+              aria-pressed={isActive}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors ${
+                isActive
+                  ? 'border-zinc-900 bg-zinc-900 text-white'
+                  : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+              }`}
+            >
+              {tax.label || slug}
+              {count > 0 && (
+                <span className={isActive ? 'text-white/60' : 'text-zinc-400'}>{count}</span>
+              )}
+            </button>
+          );
+        })}
 
-      <div className="space-y-4">
-        {Object.entries(taxonomies).map(([slug, tax]) => (
-          <TaxonomyRow
-            key={slug}
-            slug={slug}
-            tax={tax}
-            folders={folders}
-            onUpdate={(patch) => updateTax(slug, patch)}
-            onRename={(next) => renameTax(slug, next)}
-            onRemove={() => { if (confirm(`Remove "${slug}"?`)) removeTax(slug); }}
-          />
-        ))}
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-zinc-300 px-3 py-1 text-[12px] font-medium text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-800"
+        >
+          + New
+        </button>
       </div>
 
-      <div className="flex items-end gap-2 border-t border-zinc-100 pt-4">
-        <label className="block text-xs">
-          <span className="font-medium text-zinc-600">Label</span>
-          <Input
-            value={newLabel}
-            onChange={e => setNewLabel(e.target.value)}
-          />
-        </label>
-        <Button variant="secondary" onClick={addTaxonomy}>Add field</Button>
-      </div>
+      <FieldGroupAddDialog
+        open={adding}
+        existing={new Set(slugs)}
+        onClose={() => setAdding(false)}
+        onCreate={addTaxonomy}
+      />
+
+      {slugs.length === 0 ? (
+        <p className="text-sm text-zinc-500">No fields yet. Add one with “+ New”.</p>
+      ) : active && taxonomies[active] ? (
+        <TaxonomyRow
+          key={active}
+          slug={active}
+          tax={taxonomies[active]}
+          folders={folders}
+          onUpdate={(patch) => updateTax(active, patch)}
+          onRename={(next) => renameTax(active, next)}
+          onRemove={() => { if (confirm(`Remove "${active}"?`)) removeTax(active); }}
+        />
+      ) : null}
     </div>
   );
 }
