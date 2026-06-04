@@ -7,6 +7,7 @@ defined('FRONTPRESS_BOOT') || exit;
 use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
+use FrontPress\Twig\PreviewMarkerNodeVisitor;
 
 /**
  * Twig wrapper for the theme layer. Singleton that lazily binds to the active
@@ -31,6 +32,12 @@ final class TemplateRenderer
             'autoescape'  => 'html',
             'strict_variables' => false,
         ]);
+
+        // Instrument `{% include %}` so themes composed with native Twig
+        // includes (not just the partial() helper) become inspectable in the
+        // Theme Builder preview. Markers are emitted only in preview mode at
+        // runtime, so public output is unchanged.
+        $this->twig->addNodeVisitor(new PreviewMarkerNodeVisitor());
 
         // Expose config as a plain array — Twig's `config.site.name` resolves
         // through array access, not the FrontPress\Config class's get()/all() methods.
