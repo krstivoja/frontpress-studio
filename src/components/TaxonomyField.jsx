@@ -45,7 +45,10 @@ function FieldShell({ label, slug, children }) {
   return (
     <div role="group" aria-labelledby={labelId} className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <span id={labelId} className="text-[13px] font-semibold text-zinc-900">{label}</span>
+        {/* font-medium (not semibold) so taxonomy labels match the core
+            Field label weight — they're peer field labels, not group
+            titles. See dsystem/README "Visual hierarchy". */}
+        <span id={labelId} className="text-[13px] font-medium text-zinc-900">{label}</span>
         {showSlug && (
           <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">
             {slug}

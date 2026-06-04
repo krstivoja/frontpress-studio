@@ -129,6 +129,25 @@ Single-purpose, deliberately sparse:
 - **Letter-spacing:** headings use slightly-negative tracking (`-.01em` / `-.015em`); micro-labels use positive tracking (`.06em`–`.08em`) and uppercase.
 - **Line-height:** 1.5 (admin body), 1.6 (public body), 1.3 (tight — sidebar user block), 1.4 (badges).
 
+### Visual hierarchy
+
+Differentiate adjacent elements with **weight and colour first, size last.** Size is the blunt instrument — once two elements differ in size *and* weight *and* colour, they're over-separated and the layout starts to feel noisy. The admin runs on essentially three text sizes (13px controls/body, 12px small, 11px micro-label); everything else is weight and zinc shade.
+
+Three tiers, expressed without changing size:
+
+| Tier | Weight | Colour | Used for |
+|------|--------|--------|----------|
+| **Primary** | `font-semibold` | `text-zinc-900` | row titles, the focused datum, page `<h1>` |
+| **Secondary** | `font-medium` | `text-zinc-700` | nav links, field labels, body controls |
+| **Tertiary** | `font-normal` | `text-zinc-500` | hints, paths, metadata, column micro-labels |
+
+Rules that fall out of this:
+
+- **Nav items are peers.** Sidebar links (`FolderLink`, `SidebarLink`) all sit at `13px / font-medium / text-zinc-700`. The *active* state inverts to `bg-zinc-900 text-white` — that one swap carries the entire hierarchy. Don't differentiate inactive items by a single zinc shade (e.g. 600 vs 700); that drift reads as a bug, not a signal.
+- **Field labels are one treatment.** Every label-above-a-control — whether from the core `Field` component or a taxonomy `FieldShell` — is `13px / font-medium / text-zinc-900`. Labels are supporting content for the value below them, so they get medium weight, never semibold. Reserve semibold for true group/section titles.
+- **Column header vs row title vs row metadata (PagesList is the reference).** All three hold a small size and separate by treatment instead: column header = `11px uppercase font-semibold tracking-[0.06em] text-zinc-500` (a tertiary micro-label), row title = `font-semibold text-zinc-900` (primary), row path = `font-mono text-[11px] text-zinc-500` (tertiary; the mono is *semantic* — it's a path — not just de-emphasis). Where a sub-line carries a genuinely different *kind* of data (a path under a title), the extra size/family signal is justified; where two elements are the same kind (two field labels, two nav links), it isn't.
+- **Emphasise by de-emphasising.** If a primary element won't stand out, soften its neighbours rather than enlarging it. The active-nav pattern above is the canonical example: inactive links stay quiet so the active one pops without being made bigger.
+
 ### Spacing
 
 A 4px-based tailwind-flavored scale stored as `--space-1` through `--space-8`:
