@@ -93,7 +93,7 @@ export default function PatternLibraryModal({ open, theme, onClose, onOpenCode }
           {isLoading ? (
             <div className="text-sm text-zinc-500">Loading…</div>
           ) : error ? (
-            <div className="text-sm text-red-600">Failed to load: {error.message}</div>
+            <div className="text-sm text-red-600">Couldn’t load — {error.message}. Reload and try again.</div>
           ) : components.length === 0 ? (
             <EmptyState theme={theme} />
           ) : (

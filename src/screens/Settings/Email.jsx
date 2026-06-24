@@ -119,7 +119,7 @@ export default function EmailSettings() {
     mutationFn: () => api.post('/email/test', { to: testTo }),
     onMutate: () => setTestRes(null),
     onSuccess: (r) => setTestRes(r),
-    onError:   (e) => setTestRes({ ok: false, error: e.message || 'Request failed' }),
+    onError:   (e) => setTestRes({ ok: false, error: e.message || 'no response from server' }),
   });
 
   const set  = (patch) => setEmail((p) => ({ ...p, ...patch }));
@@ -284,7 +284,7 @@ export default function EmailSettings() {
                 {testRes.ok
                   ? <>Sent via <code>{testRes.transport}</code>. {testRes.transport === 'mail' && email.smtp_host
                       ? 'Warning: your SMTP settings aren’t working — PHP mail() picked it up. Most shared hosts deliver mail() messages to spam.' : ''}</>
-                  : <>Failed: <code>{testRes.error}</code></>}
+                  : <>Couldn’t send the test email — <code>{testRes.error}</code>. Check the address and SMTP settings, then try again.</>}
               </Alert>
             )}
           </div>

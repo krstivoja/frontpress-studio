@@ -141,7 +141,7 @@ export default function PagesList() {
       );
       qc.invalidateQueries({ queryKey: ['pages'] });
     },
-    onError: (err) => setImportMsg(`Import failed: ${err.message}`),
+    onError: () => setImportMsg("Couldn't import the file — check it's a valid export and try again."),
   });
 
   function onImportFiles(files) {
@@ -169,7 +169,7 @@ export default function PagesList() {
       </div>
     );
   }
-  if (error) return <div className="text-sm text-red-600">Failed to load: {error.message}</div>;
+  if (error) return <div className="text-sm text-red-600">Couldn’t load — {error.message}. Reload and try again.</div>;
 
   const title = folder ? cap(folder) : 'All Content';
 

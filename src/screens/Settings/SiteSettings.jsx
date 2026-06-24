@@ -63,7 +63,7 @@ export default function SiteSettings() {
       setCacheMsg('Cache cleared');
       setTimeout(() => setCacheMsg(''), 2500);
     },
-    onError: (e) => setCacheMsg(`Failed: ${e.message}`),
+    onError: () => setCacheMsg("Cache wasn't cleared — reload and try again."),
   });
   const rebuildCache = useMutation({
     mutationFn: () => api.post('/cache/rebuild'),
@@ -71,7 +71,7 @@ export default function SiteSettings() {
       setCacheMsg(`Cache rebuilt (${res?.count ?? 0} pages)`);
       setTimeout(() => setCacheMsg(''), 2500);
     },
-    onError: (e) => setCacheMsg(`Failed: ${e.message}`),
+    onError: () => setCacheMsg("Cache wasn't rebuilt — reload and try again."),
   });
   const rebuildAssets = useMutation({
     mutationFn: () => api.post('/cache/rebuild-assets'),
@@ -80,7 +80,7 @@ export default function SiteSettings() {
       setCacheMsg(n ? `Compiled ${n} stylesheet${n === 1 ? '' : 's'}` : 'No SCSS changes');
       setTimeout(() => setCacheMsg(''), 2500);
     },
-    onError: (e) => setCacheMsg(`Failed: ${e.message}`),
+    onError: () => setCacheMsg("Couldn't rebuild assets — reload and try again."),
   });
 
   if (isLoading) return <div className="text-sm text-zinc-500">Loading…</div>;

@@ -137,7 +137,7 @@ export default function Themes() {
                     variant="link-danger"
                     size="sm"
                     onClick={() => {
-                      if (confirm(`Delete the "${t.name || t.slug}" theme? This removes the theme files from disk.`)) {
+                      if (confirm(`Delete the "${t.name || t.slug}" theme. This deletes the theme files from disk.`)) {
                         remove.mutate(t.slug);
                       }
                     }}

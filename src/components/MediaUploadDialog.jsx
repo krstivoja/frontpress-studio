@@ -123,7 +123,7 @@ export default function MediaUploadDialog({ open, onClose, initialFiles }) {
 
           {items.some((i) => i.status === 'error') && (
             <Alert tone="error">
-              Some files failed to upload. Hover any red row for the reason.
+              Some files didn’t upload. Hover any red row for the reason.
             </Alert>
           )}
         </div>
@@ -156,7 +156,7 @@ function StatusBadge({ status }) {
     pending:   { label: 'Queued',     cls: 'bg-zinc-100 text-zinc-600' },
     uploading: { label: 'Uploading…', cls: 'bg-zinc-900 text-white' },
     done:      { label: 'Uploaded',   cls: 'bg-emerald-100 text-emerald-700' },
-    error:     { label: 'Failed',     cls: 'bg-red-100 text-red-700' },
+    error:     { label: 'Not uploaded', cls: 'bg-red-100 text-red-700' },
   };
   const m = map[status] || map.pending;
   return (
