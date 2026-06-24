@@ -3,8 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api.js';
 import { useToast } from '../lib/toast.jsx';
-import { Button, Checkbox, Combobox } from './ui/index.js';
-import { IconFolder, IconFile } from './icons.jsx';
+import { Button, Combobox } from './ui/index.js';
+import GithubSourceList from './GithubSourceList.jsx';
+import GithubRestoreSection from './GithubRestoreSection.jsx';
 
 const GITHUB_ERRORS = {
   invalid_state:  'GitHub authorization could not be verified. Please try again.',
@@ -209,37 +210,13 @@ export default function GithubBackupCard() {
 
           {github.repo && (
             <div className="space-y-3 border-t border-zinc-100 pt-3">
-              <div className="text-[13px] font-medium text-zinc-900">What to push</div>
-              <div className="divide-y divide-zinc-100 rounded-md border border-zinc-200">
-                {sources.map((s) => (
-                  <label
-                    key={s.key}
-                    className={`flex cursor-pointer items-start gap-3 px-3 py-2.5 transition-colors hover:bg-zinc-50 ${
-                      !s.exists || busy ? 'cursor-not-allowed opacity-50 hover:bg-transparent' : ''
-                    }`}
-                  >
-                    <Checkbox
-                      className="mt-0.5"
-                      checked={!!s.selected}
-                      disabled={!s.exists || busy}
-                      onChange={(e) => toggleSource(s.key, e.target.checked)}
-                    />
-                    <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center text-zinc-500">
-                      {s.type === 'dir'
-                        ? IconFolder
-                        : <IconFile ext={(s.path.split('.').pop() || '').toLowerCase()} />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13px]">
-                        <span className="font-mono font-medium text-zinc-900">{s.path}</span>
-                        {!s.exists && (
-                          <span className="ml-2 text-[11px] text-zinc-400">(not present)</span>
-                        )}
-                      </div>
-                    </div>
-                  </label>
-                ))}
-              </div>
+              <GithubSourceList
+                label="What to push"
+                sources={sources}
+                picked={sources.filter((s) => s.selected).map((s) => s.key)}
+                disabled={busy}
+                onChange={(key, on) => toggleSource(key, on)}
+              />
 
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
@@ -277,6 +254,8 @@ export default function GithubBackupCard() {
                   </div>
                 )}
               </div>
+
+              <GithubRestoreSection />
             </div>
           )}
         </div>
