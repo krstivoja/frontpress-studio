@@ -43,7 +43,8 @@ async function request(method, path, { body, signal } = {}) {
   const res = await fetch(`/admin/api${path}`, opts);
   const text = await res.text();
   let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON */ }
+  let parseOk = false;
+  try { data = text ? JSON.parse(text) : null; parseOk = true; } catch { /* non-JSON */ }
 
   if (!res.ok || (data && data.ok === false)) {
     // Skip the global handler for /me itself — the AuthProvider's initial
@@ -53,6 +54,12 @@ async function request(method, path, { body, signal } = {}) {
     }
     const msg = (data && data.error) || text || `${res.status} ${res.statusText}`;
     throw new ApiError(msg, res.status, data);
+  }
+  // A 2xx with a non-empty body that didn't parse means stray PHP output
+  // corrupted the response. Treat as a server error rather than returning null,
+  // which would cause cryptic null-deref errors in callers.
+  if (text && !parseOk) {
+    throw new ApiError("Server returned unexpected output — check PHP error logs.", res.status, null);
   }
   return data;
 }
