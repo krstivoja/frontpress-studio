@@ -38,7 +38,7 @@ export function useFileUpload({ endpoint, fileField = 'file', extraFields = {}, 
         body: fd,
       });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Upload failed');
+      if (!data.ok) throw new Error(data.error || "Couldn't upload the file — try again.");
       for (const key of invalidate) {
         qc.invalidateQueries({ queryKey: Array.isArray(key) ? key : [key] });
       }

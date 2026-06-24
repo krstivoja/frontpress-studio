@@ -130,7 +130,7 @@ export default function MediaPickerUnsplash({ onPick, pagePath }) {
         attribution: res.attribution,
       });
     } catch (e) {
-      setError(e?.message || 'Unsplash import failed');
+      setError(e?.message || "Couldn't import the photo — try again.");
     } finally {
       setPicking(null);
     }

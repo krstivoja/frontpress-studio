@@ -40,8 +40,8 @@ export function useUpdate() {
           // manually or surface the error to support.
           const msg = migrateErr instanceof ApiError
             ? migrateErr.message
-            : 'Update applied but migrations failed.';
-          toast.show(`Updated to v${res.version}, but migrations failed: ${msg}`, {
+            : "the database migration didn't finish";
+          toast.show(`Updated to v${res.version}, but the database migration didn’t finish: ${msg}. Re-run the update or contact support.`, {
             tone: 'error',
             duration: 8000,
           });
@@ -53,7 +53,7 @@ export function useUpdate() {
       setTimeout(() => { window.location.reload(); }, 600);
       return true;
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Update failed.';
+      const msg = err instanceof ApiError ? err.message : "Couldn't update — try again or contact support.";
       toast.show(msg, { tone: 'error', duration: 6000 });
       setApplying(false);
       return false;
@@ -78,7 +78,7 @@ export function useUpdate() {
       await refresh();
       return res;
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Update check failed.';
+      const msg = err instanceof ApiError ? err.message : "Couldn't check for updates — try again.";
       toast.show(msg, { tone: 'error', duration: 4000 });
       return null;
     } finally {

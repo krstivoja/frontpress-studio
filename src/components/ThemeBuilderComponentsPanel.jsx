@@ -54,7 +54,7 @@ export default function ThemeBuilderComponentsPanel({ isTwig, files, theme, onIn
   const [formOpen, setFormOpen] = useState(false);
 
   async function deleteSnippet(item) {
-    if (!confirm(`Delete snippet "${item.label}"? The file on disk will be removed.`)) return;
+    if (!confirm(`Delete snippet "${item.label}". The file on disk will be deleted.`)) return;
     try {
       await api.post('/themes/snippets-delete', { theme, id: item._rawId });
       qc.invalidateQueries({ queryKey: ['theme-snippets', theme] });

@@ -171,7 +171,7 @@ export default function PageEditor() {
   });
 
   if (!isNew && isLoading) return <div className="text-sm text-zinc-500">Loading…</div>;
-  if (!isNew && error) return <div className="text-sm text-red-600">Failed to load: {error.message}</div>;
+  if (!isNew && error) return <div className="text-sm text-red-600">Couldn’t load — {error.message}. Reload and try again.</div>;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">

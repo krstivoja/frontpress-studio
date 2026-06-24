@@ -162,7 +162,7 @@ function TaxonomiesEditor({ taxonomies, onChange, folders }) {
           folders={folders}
           onUpdate={(patch) => updateTax(active, patch)}
           onRename={(next) => renameTax(active, next)}
-          onRemove={() => { if (confirm(`Remove "${active}"?`)) removeTax(active); }}
+          onRemove={() => { if (confirm(`Delete "${active}". This cannot be undone.`)) removeTax(active); }}
         />
       ) : null}
     </div>

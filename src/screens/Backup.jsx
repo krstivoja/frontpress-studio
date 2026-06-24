@@ -64,7 +64,7 @@ export default function Backup() {
     }
     try {
       await restoreUpload.upload(pickedFile);
-      toast.show('Restored successfully.', { tone: 'success' });
+      toast.show('Backup restored.', { tone: 'success' });
       qc.invalidateQueries();
       setPickedFile(null);
     } catch (err) {
