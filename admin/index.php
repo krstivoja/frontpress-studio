@@ -110,6 +110,11 @@ function passwordCheck(string $input, string $hash): bool
 /** @param array<string, mixed> $data */
 function json_response(array $data, int $code = 200): never
 {
+    // Drop any buffered output (stray notices/warnings) so it can't corrupt
+    // the JSON body. Safe: the JSON API's only intended output is this call.
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
     http_response_code($code);
     if (!headers_sent()) {
         header('Content-Type: application/json');
@@ -154,6 +159,13 @@ $ROUTER_CONFIG = [
 
 // JSON API
 if (preg_match('#^/admin/api/(.*)$#', $uri, $apiMatch)) {
+    // Buffer the whole API request. Stray PHP output — a notice, a
+    // deprecation, a warning with display_errors on — would otherwise be
+    // prepended to the JSON body. The HTTP status stays 200, so the browser
+    // gets `<warning…>{"ok":true}` which fails JSON.parse and surfaces as a
+    // cryptic null-deref on the client. json_response() discards this buffer
+    // before emitting, so responses are always clean JSON.
+    ob_start();
     FrontPress\Api\Router::dispatch($apiMatch[1], $method, $ROUTER_CONFIG);
     exit;
 }
