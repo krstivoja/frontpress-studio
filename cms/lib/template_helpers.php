@@ -77,8 +77,14 @@ if (!function_exists('partial')) {
             } elseif ($kind === 'html') {
                 readfile($path);
             } else {
+                $cacheDir  = ($GLOBALS['fp_cache_dir'] ?? sys_get_temp_dir()) . '/components';
+                $cacheFile = $cacheDir . '/' . md5($path) . '.php';
+                if (!is_file($cacheFile) || filemtime($path) > filemtime($cacheFile)) {
+                    @mkdir($cacheDir, 0755, true);
+                    file_put_contents($cacheFile, \FrontPress\ComponentTagProcessor::processPhp(file_get_contents($path)));
+                }
                 extract($vars, EXTR_SKIP);
-                require $path;
+                require $cacheFile;
             }
             if ($preview) {
                 $tplPath = "templates/" . htmlspecialchars($rel, ENT_QUOTES);
@@ -87,6 +93,26 @@ if (!function_exists('partial')) {
             return;
         }
         throw new RuntimeException("Partial not found: $name");
+    }
+}
+
+if (!function_exists('component')) {
+    /**
+     * Render a reusable component from the active theme's `components/` directory.
+     * Resolves `components/<name>.php`, `components/<name>.twig`, or
+     * `components/<name>.html` — same engine rules as `partial()`.
+     *
+     * Slot defaults live in the component template via Twig's `|default()` filter.
+     * Per-page values come from `meta.components.<name>` in front-matter and are
+     * passed as `$vars` by the caller:
+     *
+     *   {{ component('hero', meta.components.hero ?? {}) }}
+     *
+     * @param array<string, mixed> $vars
+     */
+    function component(string $name, array $vars = []): void
+    {
+        partial('components/' . $name, $vars);
     }
 }
 
