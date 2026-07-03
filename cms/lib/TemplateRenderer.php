@@ -5,8 +5,8 @@ namespace FrontPress;
 defined('FRONTPRESS_BOOT') || exit;
 
 use Twig\Environment;
-use Twig\Loader\FilesystemLoader;
 use Twig\TwigFunction;
+use FrontPress\Twig\ComponentTagLoader;
 use FrontPress\Twig\PreviewMarkerNodeVisitor;
 
 /**
@@ -25,7 +25,7 @@ final class TemplateRenderer
 
     private function __construct(string $templateDir, string $cacheDir)
     {
-        $loader = new FilesystemLoader($templateDir);
+        $loader = new ComponentTagLoader($templateDir);
         $this->twig = new Environment($loader, [
             'cache'       => $cacheDir,
             'auto_reload' => true,
@@ -61,6 +61,11 @@ final class TemplateRenderer
         $this->twig->addFunction(new TwigFunction('partial', function (string $name, array $vars = []): string {
             ob_start();
             partial($name, $vars);
+            return (string)ob_get_clean();
+        }, $isSafe));
+        $this->twig->addFunction(new TwigFunction('component', function (string $name, array $vars = []): string {
+            ob_start();
+            component($name, $vars);
             return (string)ob_get_clean();
         }, $isSafe));
     }
