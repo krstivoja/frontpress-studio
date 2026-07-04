@@ -47,9 +47,10 @@ const PROVIDERS = [
     accent: 'text-red-700 bg-red-100',
     icon: mailgunIcon,
     host: 'smtp.mailgun.org',
+    hosts: ['smtp.mailgun.org', 'smtp.eu.mailgun.org'],
     port: 587,
     encryption: 'tls',
-    note: 'SMTP credentials from your Mailgun domain settings.',
+    note: 'SMTP credentials from your Mailgun domain settings. Default (US-region) use smtp.mailgun.org; EU-region domains use smtp.eu.mailgun.org',
   },
   {
     slug: 'sendgrid',
