@@ -40,6 +40,10 @@ phpstan-baseline.neon
 # instead — Env::resolveConfigPath() falls back to it on a fresh install.
 /config.php
 
+# FrontPress Local desktop app injects this auto-login bridge into local
+# installs. Not framework code — never ship it in the release zip.
+/fp-local-login.php
+
 # Local Sites recreates this dir with a MySQL dump regardless of whether
 # the framework uses SQL. mdframework is flat-file only — never ship it.
 /sql/

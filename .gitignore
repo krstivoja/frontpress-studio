@@ -61,6 +61,12 @@ coverage/
 Thumbs.db
 
 # ──────────────────────────────────────────────────────────────────
+# FrontPress Local desktop app — injects this auto-login bridge into
+# each local install. Operator/app-owned, never part of the framework.
+# ──────────────────────────────────────────────────────────────────
+/fp-local-login.php
+
+# ──────────────────────────────────────────────────────────────────
 # Release artifacts
 # ──────────────────────────────────────────────────────────────────
 release/
