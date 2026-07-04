@@ -24,6 +24,7 @@ export default function PagesFilterBar({
   sort,
   setSort,
   counts,
+  hideSort = false,
 }) {
   const hasActiveFilters = !!query.trim() || !!statusFilter;
 
@@ -53,17 +54,19 @@ export default function PagesFilterBar({
           <option value="draft">Drafts ({counts.drafts})</option>
         </Select>
 
-        <Select
-          className="w-40"
-          value={sort}
-          onChange={e => setSort(e.target.value)}
-          aria-label="Sort"
-        >
-          <option value="date-desc">Date — newest</option>
-          <option value="date-asc">Date — oldest</option>
-          <option value="title-asc">Title — A→Z</option>
-          <option value="title-desc">Title — Z→A</option>
-        </Select>
+        {!hideSort && (
+          <Select
+            className="w-40"
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+            aria-label="Sort"
+          >
+            <option value="date-desc">Date — newest</option>
+            <option value="date-asc">Date — oldest</option>
+            <option value="title-asc">Title — A→Z</option>
+            <option value="title-desc">Title — Z→A</option>
+          </Select>
+        )}
       </div>
 
       {hasActiveFilters && (

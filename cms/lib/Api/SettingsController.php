@@ -153,6 +153,18 @@ class SettingsController
             }
         }
 
+        $existingFolders = (array)($cfg->all()['folders'] ?? []);
+        $folders = $existingFolders;
+        if (is_array($body['folders'] ?? null)) {
+            $folders = [];
+            foreach ($body['folders'] as $name => $opts) {
+                $slug = preg_replace('/[^a-z0-9_-]/', '', strtolower((string)$name));
+                if (!$slug) continue;
+                $sortMode = (($opts['sort_mode'] ?? 'date') === 'order') ? 'order' : 'date';
+                $folders[$slug] = ['sort_mode' => $sortMode];
+            }
+        }
+
         $cfg->save(array_merge($cfg->all(), [
             'site'       => $site,
             'taxonomies' => $taxonomies,
@@ -160,6 +172,7 @@ class SettingsController
             'seo'        => $seo,
             'email'      => $email,
             'forms'      => $forms,
+            'folders'    => $folders,
         ]));
 
         // Mirror the GET-time password masking on the way back.

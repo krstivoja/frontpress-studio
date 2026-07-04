@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, getCsrf } from '../lib/api.js';
 import { usePageTrash } from '../lib/usePageTrash.js';
+import { useDragReorder } from '../lib/useDragReorder.js';
 import { cap } from '../lib/utils.js';
 import { Button, Dropzone } from '../components/ui/index.js';
-import PageRow from '../components/PageRow.jsx';
 import PagesFilterBar from '../components/PagesFilterBar.jsx';
-import PagesListEmptyState from '../components/PagesListEmptyState.jsx';
+import PagesTable from '../components/PagesTable.jsx';
 
 // Mirrors dsystem ui_kit `PagesList.jsx` — card-wrapped, header with count
 // pill + filter toolbar, inline Draft badge, Edit + Delete row actions.
@@ -31,6 +31,12 @@ export default function PagesList() {
     queryKey: ['pages'],
     queryFn: () => api.get('/pages'),
   });
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api.get('/settings'),
+  });
+  const sortMode = settingsData?.settings?.folders?.[folder]?.sort_mode || 'date';
+  const isOrderMode = !!folder && sortMode === 'order';
 
   const filtered = useMemo(() => {
     let list = data?.pages || [];
@@ -43,24 +49,33 @@ export default function PagesList() {
         (p.path  || '').toLowerCase().includes(q)
       );
     }
-    // Client-side re-sort so the user can pick the order. ISO `YYYY-MM-DD`
-    // dates sort lexicographically the same as chronologically; missing
-    // dates always go to the bottom so they don't poison either direction.
     const sorted = [...list];
-    sorted.sort((a, b) => {
-      if (sort === 'title-asc' || sort === 'title-desc') {
-        const cmp = (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
-        return sort === 'title-asc' ? cmp : -cmp;
-      }
-      const ad = a.date || '';
-      const bd = b.date || '';
-      if (!ad && !bd) return 0;
-      if (!ad) return 1;
-      if (!bd) return -1;
-      return sort === 'date-asc' ? ad.localeCompare(bd) : bd.localeCompare(ad);
-    });
+    if (isOrderMode) {
+      sorted.sort((a, b) => {
+        const ao = parseInt(a.meta?.order ?? '', 10);
+        const bo = parseInt(b.meta?.order ?? '', 10);
+        const an = isNaN(ao) ? Infinity : ao;
+        const bn = isNaN(bo) ? Infinity : bo;
+        return an - bn;
+      });
+    } else {
+      // Client-side re-sort so the user can pick the order.
+      sorted.sort((a, b) => {
+        if (sort === 'title-asc' || sort === 'title-desc') {
+          const cmp = (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+          return sort === 'title-asc' ? cmp : -cmp;
+        }
+        const ad = a.date || '';
+        const bd = b.date || '';
+        if (!ad && !bd) return 0;
+        if (!ad) return 1;
+        if (!bd) return -1;
+        return sort === 'date-asc' ? ad.localeCompare(bd) : bd.localeCompare(ad);
+      });
+    }
     return sorted;
-  }, [data, folder, statusFilter, query, sort]);
+  }, [data, folder, statusFilter, query, sort, isOrderMode]);
+  const { displayItems, isReordering: reordering } = useDragReorder(filtered, isOrderMode);
 
   // Status-chip counts. Computed from the folder + search filtered list but
   // BEFORE the status filter, so each chip shows how many posts it would
@@ -212,6 +227,7 @@ export default function PagesList() {
           sort={sort}
           setSort={setSort}
           counts={statusCounts}
+          hideSort={isOrderMode}
         />
 
       {folder && importOpen && (
@@ -241,50 +257,22 @@ export default function PagesList() {
         </div>
       )}
 
-      <table className="w-full text-[13px]">
-        <thead>
-          <tr className="border-b border-zinc-100 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
-            <th className="w-10 px-6 py-3">
-              <input
-                type="checkbox"
-                aria-label="Select all"
-                checked={allVisibleSelected}
-                ref={(el) => { if (el) el.indeterminate = visibleSelected.length > 0 && !allVisibleSelected; }}
-                onChange={(e) => toggleAll(e.target.checked)}
-                className="h-4 w-4 cursor-pointer rounded border-zinc-300"
-              />
-            </th>
-            <th className="px-6 py-3">Title</th>
-            {folder ? (
-              <th className="px-6 py-3">Status</th>
-            ) : (
-              <th className="px-6 py-3">Type</th>
-            )}
-            <th className="w-40 px-6 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.length === 0 && (
-            <PagesListEmptyState
-              folder={folder}
-              filterActive={!!(query || statusFilter)}
-              columnSpan={4}
-              onNew={() => navigate(`/new/${encodeURIComponent(folder)}`)}
-            />
-          )}
-          {filtered.map(p => (
-            <PageRow
-              key={p.path}
-              page={p}
-              showStatus={!!folder}
-              selected={selected.has(p.path)}
-              onToggle={toggleOne}
-              onEdit={navigate}
-              onDelete={(page) => del.mutate(page)}
-            />
-          ))}
-        </tbody>
-      </table>
+      <PagesTable
+        folder={folder}
+        isOrderMode={isOrderMode}
+        reordering={reordering}
+        displayItems={displayItems}
+        filtered={filtered}
+        selected={selected}
+        visibleSelectedCount={visibleSelected.length}
+        allVisibleSelected={allVisibleSelected}
+        filterActive={!!(query || statusFilter)}
+        onToggleAll={toggleAll}
+        onToggleOne={toggleOne}
+        onEdit={navigate}
+        onDelete={(page) => del.mutate(page)}
+        onNew={() => navigate(`/new/${encodeURIComponent(folder)}`)}
+      />
       </div>
     </div>
   );

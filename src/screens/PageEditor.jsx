@@ -35,6 +35,11 @@ export default function PageEditor() {
     queryFn: () => api.get('/themes/templates'),
   });
   const templates = templatesData?.templates || [];
+  const { data: settingsData } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api.get('/settings'),
+  });
+  const sortMode = settingsData?.settings?.folders?.[folder]?.sort_mode || 'date';
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -246,6 +251,7 @@ export default function PageEditor() {
         setStatus={setStatus}
         date={date}
         setDate={setDate}
+        sortMode={sortMode}
         template={template}
         setTemplate={setTemplate}
         templates={templates}

@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import {
-  DndContext,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  useDraggable,
-  useDroppable,
-} from '@dnd-kit/core';
+  draggable,
+  dropTargetForElements,
+  monitorForElements,
+} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import {
+  attachInstruction,
+  extractInstruction,
+} from '@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item';
 import { flattenBlocks } from '../lib/themeBuilderBlocks.js';
 
 const tone = {
@@ -16,9 +17,12 @@ const tone = {
   html: 'bg-zinc-100 text-zinc-600 ring-zinc-200',
 };
 
+const TREE_ITEM_DND = 'tree-item';
+const INDENT = 14; // px of left padding per nesting level
+
 // Block tags that can accept children. Used to decide whether the
-// "inside" drop zone shows up. Void / atomic elements (img, hr, h1…)
-// fold to before/after only.
+// "inside" (make-child) drop is offered. Void / atomic elements (img, hr,
+// h1…) fold to before/after only.
 const CONTAINER_TAGS = new Set([
   'article', 'aside', 'div', 'footer', 'form', 'header', 'main',
   'nav', 'ol', 'section', 'ul', 'li', 'figure', 'blockquote',
@@ -30,16 +34,36 @@ function canContainChildren(block) {
   return CONTAINER_TAGS.has(block.tag);
 }
 
+// Pragmatic tree instruction → the before/inside/after contract onMove
+// expects. `reparent` is blocked (see attachInstruction below) so it never
+// reaches here; `instruction-blocked` is ignored by the monitor.
+const INSTRUCTION_POSITION = {
+  'reorder-above': 'before',
+  'reorder-below': 'after',
+  'make-child': 'inside',
+};
+
 export default function ThemeBuilderOutline({ blocks, selectedId, onSelect, onMove }) {
   const flat = useMemo(() => flattenBlocks(blocks), [blocks]);
-  const [activeId, setActiveId] = useState(null);
-  // `{ overId, position }` — the row we're hovering and where (before / inside / after).
-  const [over, setOver] = useState(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor),
-  );
+  // Keep the monitor stable while always calling the latest onMove.
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
+
+  useEffect(() => monitorForElements({
+    canMonitor: ({ source }) => source.data.type === TREE_ITEM_DND,
+    onDrop({ source, location }) {
+      const target = location.current.dropTargets[0];
+      if (!target) return;
+      const instruction = extractInstruction(target.data);
+      if (!instruction || instruction.type === 'instruction-blocked') return;
+      const position = INSTRUCTION_POSITION[instruction.type];
+      const activeId = source.data.id;
+      const overId = target.data.id;
+      if (!position || activeId === overId) return;
+      onMoveRef.current?.(activeId, overId, position);
+    },
+  }), []);
 
   if (!flat.length) {
     return (
@@ -49,78 +73,74 @@ export default function ThemeBuilderOutline({ blocks, selectedId, onSelect, onMo
     );
   }
 
-  function handleDragOver(event) {
-    const { over: dndOver, active, activatorEvent } = event;
-    if (!dndOver || !active || dndOver.id === active.id) {
-      setOver(null);
-      return;
-    }
-    const target = flat.find((b) => b.id === dndOver.id);
-    if (!target) return;
-
-    // Position derived from cursor Y within the target rect. Top third
-    // = before, bottom third = after, middle = inside (if allowed).
-    const rect = dndOver.rect;
-    const y = pointerY(event, activatorEvent);
-    const ratio = (y - rect.top) / (rect.height || 1);
-    let position;
-    if (ratio < 0.33) position = 'before';
-    else if (ratio > 0.66) position = 'after';
-    else position = canContainChildren(target) ? 'inside' : (ratio < 0.5 ? 'before' : 'after');
-
-    setOver({ overId: dndOver.id, position });
-  }
-
-  function handleDragEnd(event) {
-    const { active } = event;
-    const drop = over;
-    setActiveId(null);
-    setOver(null);
-    if (!drop || !active) return;
-    if (drop.overId === active.id) return;
-    onMove?.(active.id, drop.overId, drop.position);
-  }
-
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={(e) => { setActiveId(e.active.id); setOver(null); }}
-      onDragOver={handleDragOver}
-      onDragCancel={() => { setActiveId(null); setOver(null); }}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="space-y-1">
-        {flat.map((block) => (
-          <OutlineRow
-            key={block.id}
-            block={block}
-            selected={selectedId === block.id}
-            dragging={activeId === block.id}
-            dropPosition={over?.overId === block.id ? over.position : null}
-            onSelect={() => onSelect?.(block.id)}
-          />
-        ))}
-      </div>
-    </DndContext>
+    <div className="space-y-1">
+      {flat.map((block) => (
+        <OutlineRow
+          key={block.id}
+          block={block}
+          selected={selectedId === block.id}
+          onSelect={() => onSelect?.(block.id)}
+        />
+      ))}
+    </div>
   );
 }
 
-function OutlineRow({ block, selected, dragging, dropPosition, onSelect }) {
-  const { setNodeRef: setDragRef, listeners, attributes } = useDraggable({ id: block.id });
-  const { setNodeRef: setDropRef } = useDroppable({ id: block.id });
+function OutlineRow({ block, selected, onSelect }) {
+  const ref = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  // Live pragmatic instruction for THIS row while another is dragged over it.
+  const [instruction, setInstruction] = useState(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+
+    const data = { type: TREE_ITEM_DND, id: block.id };
+    // Never offer reparent (keeps the before/inside/after contract); drop
+    // make-child too when this block can't hold children.
+    const blocked = canContainChildren(block) ? ['reparent'] : ['reparent', 'make-child'];
+
+    return combine(
+      draggable({
+        element: el,
+        getInitialData: () => data,
+        onDragStart: () => setDragging(true),
+        onDrop: () => setDragging(false),
+      }),
+      dropTargetForElements({
+        element: el,
+        canDrop: ({ source }) =>
+          source.data.type === TREE_ITEM_DND && source.data.id !== block.id,
+        getData: ({ input, element }) =>
+          attachInstruction(data, {
+            input,
+            element,
+            currentLevel: block.depth,
+            indentPerLevel: INDENT,
+            mode: 'standard',
+            block: blocked,
+          }),
+        onDrag: ({ self, source }) =>
+          setInstruction(source.data.id === block.id ? null : extractInstruction(self.data)),
+        onDragLeave: () => setInstruction(null),
+        onDrop: () => setInstruction(null),
+      }),
+    );
+  }, [block.id, block.depth, block.source, block.tag]);
+
+  const pos = instruction && INSTRUCTION_POSITION[instruction.type];
 
   return (
     <div
-      ref={setDropRef}
+      ref={ref}
       className="relative"
-      style={{ paddingLeft: `${block.depth * 14}px` }}
+      style={{ paddingLeft: `${block.depth * INDENT}px` }}
     >
-      {dropPosition === 'before' && <DropLine pos="top" />}
-      {dropPosition === 'after'  && <DropLine pos="bottom" />}
+      {pos === 'before' && <DropLine pos="top" />}
+      {pos === 'after'  && <DropLine pos="bottom" />}
       <button
-        ref={setDragRef}
-        {...listeners}
-        {...attributes}
         type="button"
         onClick={onSelect}
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
@@ -128,7 +148,7 @@ function OutlineRow({ block, selected, dragging, dropPosition, onSelect }) {
             ? 'opacity-40'
             : selected
               ? 'bg-zinc-900 text-white'
-              : dropPosition === 'inside'
+              : pos === 'inside'
                 ? 'bg-blue-50 text-zinc-900 ring-1 ring-blue-300'
                 : 'text-zinc-700 hover:bg-zinc-100'
         }`}
@@ -156,17 +176,4 @@ function DropLine({ pos }) {
       }`}
     />
   );
-}
-
-// dnd-kit doesn't expose the live pointer Y in onDragOver directly; pull
-// it from the underlying native event. Falls back to the target rect
-// midpoint so we always pick a sensible position.
-function pointerY(event, activatorEvent) {
-  const native = event.activatorEvent || activatorEvent;
-  // PointerSensor stores the current pointer position on the active drag.
-  const current = event.active?.rect?.current?.translated;
-  if (current) return current.top + current.height / 2;
-  if (native && 'clientY' in native) return native.clientY;
-  const rect = event.over?.rect;
-  return rect ? rect.top + rect.height / 2 : 0;
 }

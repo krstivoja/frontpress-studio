@@ -37,6 +37,10 @@ class PagesController
 
         Router::requireCsrf();
 
+        if ($method === 'POST' && $relPath === 'reorder') {
+            self::reorder($services, $config);
+            return;
+        }
         if ($method === 'POST' && $relPath === '') {
             self::save(null, $services, $config);
             return;
@@ -263,6 +267,45 @@ class PagesController
         $svc['cache']->clearIndex();
         ServiceFactory::audit($config)->record('page.delete', $relPath, ['token' => $token]);
         \json_response(['ok' => true, 'token' => $token]);
+    }
+
+    /**
+     * Bulk-update the `order` front-matter field for a set of posts. Called
+     * after a drag-and-drop reorder in the post list. Accepts:
+     *   { items: [{ path: "docs/foo", order: 1 }, ...] }
+     *
+     * @param array{paths: PathResolver, repo: ContentRepository, cache: CacheService} $svc
+     * @param array<string, mixed> $config
+     */
+    private static function reorder(array $svc, array $config): void
+    {
+        $body  = Router::jsonBody();
+        $items = is_array($body['items'] ?? null) ? $body['items'] : [];
+        if (empty($items)) {
+            \json_response(['ok' => false, 'error' => 'No items provided'], 400);
+        }
+
+        $updated = [];
+        foreach ($items as $item) {
+            $relPath = trim((string)($item['path'] ?? ''), '/');
+            $order   = (int)($item['order'] ?? 0);
+            if (!$svc['paths']->isValidRelPath($relPath)) continue;
+
+            $abs = $svc['paths']->contentFile($relPath);
+            if (!$abs) continue;
+
+            $parsed = $svc['repo']->parse($abs);
+            $meta   = $parsed['meta'];
+            $body2  = $parsed['body'];
+            $meta['order'] = $order;
+            $svc['repo']->save($relPath, $meta, $body2);
+            $svc['cache']->clearPage($relPath);
+            $updated[] = $relPath;
+        }
+
+        $svc['cache']->clearIndex();
+        ServiceFactory::audit($config)->record('pages.reorder', '', ['count' => count($updated)]);
+        \json_response(['ok' => true, 'updated' => count($updated)]);
     }
 
     /**

@@ -25,6 +25,7 @@ export default function PageEditorSidebar({
   setStatus,
   date,
   setDate,
+  sortMode,
   template,
   setTemplate,
   templates,
@@ -122,12 +123,21 @@ export default function PageEditorSidebar({
           />
         </Field>
 
-        <Field label="Date">
-          <DatePicker
-            value={date || ''}
-            onChange={(v) => markDirty(setDate)(v)}
-          />
-        </Field>
+        {sortMode === 'order' ? (
+          <Field label="Order">
+            <p className="text-[13px] text-zinc-500">
+              {taxValues.order ? `#${taxValues.order}` : 'Not set'}
+              <span className="ml-2 text-[11px]">— drag rows in the list to reorder</span>
+            </p>
+          </Field>
+        ) : (
+          <Field label="Date">
+            <DatePicker
+              value={date || ''}
+              onChange={(v) => markDirty(setDate)(v)}
+            />
+          </Field>
+        )}
 
         <Field label="Template">
           <Select

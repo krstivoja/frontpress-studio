@@ -18,17 +18,29 @@ export default function Fields() {
   const folders = pagesData?.folders || [];
 
   const [taxonomies, setTaxonomies] = useState({});
+  const [folderSettings, setFolderSettings] = useState({});
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (data?.settings) setTaxonomies(data.settings.taxonomies || {});
+    if (data?.settings) {
+      setTaxonomies(data.settings.taxonomies || {});
+      setFolderSettings(data.settings.folders || {});
+    }
   }, [data]);
+
+  function setFolderSortMode(folder, mode) {
+    setFolderSettings((prev) => ({
+      ...prev,
+      [folder]: { ...(prev[folder] || {}), sort_mode: mode },
+    }));
+  }
 
   const save = useMutation({
     mutationFn: () => api.put('/settings', {
       site: data?.settings?.site || { name: '', base: '/' },
       uploads: data?.settings?.uploads || { max_mb: 5, max_width: 0, max_height: 0 },
       taxonomies,
+      folders: folderSettings,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['settings'] });
@@ -52,6 +64,45 @@ export default function Fields() {
       </div>
 
       {save.error && <Alert tone="error">{save.error.message}</Alert>}
+
+      {folders.length > 0 && (
+        <Card>
+          <div className="space-y-3">
+            <div>
+              <p className="text-[13px] font-semibold text-zinc-900">Folder sort mode</p>
+              <p className="text-[12px] text-zinc-500">
+                Order mode replaces the date picker with an order number and enables drag-and-drop reordering in the post list.
+              </p>
+            </div>
+            <div className="divide-y divide-zinc-100">
+              {folders.map((f) => {
+                const mode = folderSettings[f]?.sort_mode || 'date';
+                return (
+                  <div key={f} className="flex items-center justify-between py-2.5">
+                    <span className="font-mono text-[13px] text-zinc-800">{f}</span>
+                    <div className="flex rounded-md border border-zinc-200 text-[12px] font-medium overflow-hidden">
+                      {['date', 'order'].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setFolderSortMode(f, m)}
+                          className={`px-3 py-1.5 transition-colors capitalize ${
+                            mode === m
+                              ? 'bg-zinc-900 text-white'
+                              : 'bg-white text-zinc-600 hover:bg-zinc-50'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <TaxonomiesEditor taxonomies={taxonomies} onChange={setTaxonomies} folders={folders} />
