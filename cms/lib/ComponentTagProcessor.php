@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace FrontPress;
 
 defined('FRONTPRESS_BOOT') || exit;
@@ -60,7 +62,9 @@ final class ComponentTagProcessor
             $parts = [];
             foreach (self::tokenize($m[2]) as $t) {
                 if ($t['expr']) {
-                    if ($t['value'] === '') continue;      // skip empty {} expressions
+                    if ($t['value'] === '') {
+                        continue;
+                    }      // skip empty {} expressions
                     $parts[] = "'{$t['key']}': ({$t['value']})";
                 } else {
                     $parts[] = "'{$t['key']}': '" . addslashes($t['value']) . "'";
@@ -78,7 +82,9 @@ final class ComponentTagProcessor
             $parts = [];
             foreach (self::tokenize($m[2]) as $t) {
                 if ($t['expr']) {
-                    if ($t['value'] === '') continue;      // skip empty {} expressions
+                    if ($t['value'] === '') {
+                        continue;
+                    }      // skip empty {} expressions
                     $parts[] = "'{$t['key']}' => ({$t['value']})";
                 } else {
                     $parts[] = "'{$t['key']}' => '" . addslashes($t['value']) . "'";
