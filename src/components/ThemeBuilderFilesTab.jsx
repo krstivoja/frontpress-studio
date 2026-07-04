@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import useFocusTrap from '../lib/useFocusTrap.js';
 import { api } from '../lib/api.js';
-import { Alert, Button, ConfirmDialog, Field, Input } from './ui/index.js';
+import { Button, ConfirmDialog } from './ui/index.js';
 import { IconFile, IconPlus } from './icons.jsx';
+import PathDialog from './ThemeFilePathDialog.jsx';
 
 // Files panel for the Theme Builder's left sidebar. List + "+" button +
 // right-click menu driving the file-create/rename/duplicate/delete
@@ -212,88 +212,3 @@ function ContextMenu({ x, y, onAction }) {
   );
 }
 
-function PathDialog({ mode, file, files, error, pending, onClose, onSubmit }) {
-  const ref = useRef(null);
-  const inputRef = useRef(null);
-  useFocusTrap(ref, true, inputRef);
-
-  const [path, setPath] = useState(() => {
-    if (mode === 'rename')    return file?.path || '';
-    if (mode === 'duplicate') return uniqueCopyPath(file?.path, files);
-    return 'templates/new.twig';
-  });
-
-  const title = mode === 'create'
-    ? 'New file'
-    : `${mode === 'rename' ? 'Rename' : 'Duplicate'} ${file?.name}`;
-  const submitLabel = mode === 'create' ? 'Create' : mode === 'rename' ? 'Rename' : 'Duplicate';
-
-  function submit(e) {
-    e.preventDefault();
-    const next = path.trim();
-    if (!next || pending) return;
-    onSubmit(next);
-  }
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
-      onClick={onClose}
-    >
-      <div
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="files-dialog-title"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl"
-      >
-        <h2 id="files-dialog-title" className="mb-3 text-sm font-semibold text-zinc-900">
-          {title}
-        </h2>
-        <form onSubmit={submit} className="space-y-3">
-          <Field
-            label="Path"
-            hint="Under templates/ or assets/. Allowed: twig, php, html, css, scss, js."
-          >
-            <Input
-              ref={inputRef}
-              mono
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-              placeholder="templates/about.twig"
-            />
-          </Field>
-          {error && <Alert tone="error">{error}</Alert>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending || !path.trim()}>
-              {pending ? `${submitLabel}…` : submitLabel}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-// Default destination for the Duplicate flow. If the source already ends
-// in `.copy` / `.copy<N>` we bump the number instead of stacking, so
-// re-duplicating "foo.copy.twig" gives "foo.copy2.twig", not
-// "foo.copy.copy.twig".
-function uniqueCopyPath(path, files) {
-  if (!path) return '';
-  const dot = path.lastIndexOf('.');
-  let stem = dot >= 0 ? path.slice(0, dot) : path;
-  const ext = dot >= 0 ? path.slice(dot) : '';
-  const m = /\.copy(\d*)$/.exec(stem);
-  if (m) stem = stem.slice(0, -m[0].length);
-  const taken = new Set((files || []).map((f) => f.path));
-  let i = m ? Math.max(2, (parseInt(m[1] || '1', 10) || 1) + 1) : 1;
-  let next = i === 1 ? `${stem}.copy${ext}` : `${stem}.copy${i}${ext}`;
-  while (taken.has(next)) { i = Math.max(i + 1, 2); next = `${stem}.copy${i}${ext}`; }
-  return next;
-}

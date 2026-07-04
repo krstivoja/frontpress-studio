@@ -1,0 +1,8 @@
+{% extends '_layout.twig' %}
+{% set page_title = 'Not found' %}
+
+{% block content %}
+<h1>404 — not found</h1>
+<p>The page <code>{{ url }}</code> doesn't exist.</p>
+<p><Button label="Go home" variant="primary" href="/" /></p>
+{% endblock %}

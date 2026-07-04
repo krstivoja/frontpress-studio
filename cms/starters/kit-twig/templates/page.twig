@@ -1,0 +1,9 @@
+{% extends '_layout.twig' %}
+{% set page_title = meta.title|default('Page') %}
+
+{% block content %}
+<article class="prose">
+  <h1>{{ meta.title|default('') }}</h1>
+  {{ html|raw }}
+</article>
+{% endblock %}

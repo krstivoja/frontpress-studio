@@ -1,0 +1,7 @@
+{
+  "name": "Kit (Design System)",
+  "version": "0.1.0",
+  "description": "A blank design-system starter. Ships design tokens + ~10 prop-driven components (Button, Card, Badge, Alert, Avatar, Hero, CTA, Stat, Feature, Input). Activate it, open the Pattern Library to preview each, and drop components into content with JSX-style tags like <Button label=\"Go\" href=\"/start\" />.",
+  "author": "FrontPress Studio",
+  "engine": "twig"
+}

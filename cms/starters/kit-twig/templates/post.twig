@@ -1,0 +1,16 @@
+{% extends '_layout.twig' %}
+{% set page_title = meta.title|default('Post') %}
+
+{% block content %}
+<article class="prose">
+  {% set featured = meta.image is iterable ? (meta.image|first) : meta.image %}
+  {% if featured %}
+    <figure class="post-featured">
+      <img src="{{ featured }}" alt="{{ meta.title|default('') }}">
+    </figure>
+  {% endif %}
+  <h1>{{ meta.title|default('') }}</h1>
+  {% if meta.date %}<p class="archive-meta"><time>{{ meta.date }}</time></p>{% endif %}
+  {{ html|raw }}
+</article>
+{% endblock %}

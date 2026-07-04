@@ -1,0 +1,6 @@
+{# Stat — <Stat value="98%" label="Uptime" />
+   props: value, label #}
+<div class="ds-stat">
+  <span class="ds-stat__value">{{ value|default('0') }}</span>
+  <span class="ds-stat__label">{{ label|default('Metric') }}</span>
+</div>

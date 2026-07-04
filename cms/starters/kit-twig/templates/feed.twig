@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ title }}</title>
+  <link href="{{ feed_url }}" rel="self"/>
+  <link href="{{ site_url }}"/>
+  <updated>{{ updated|date('c') }}</updated>
+  <id>{{ feed_url }}</id>
+  {% for item in items %}
+  <entry>
+    <title>{{ item.title }}</title>
+    <link href="{{ item.absolute_url }}"/>
+    <id>{{ item.absolute_url }}</id>
+    <updated>{{ item.mtime|date('c') }}</updated>
+    {% if item.date %}<published>{{ item.date }}</published>{% endif %}
+  </entry>
+  {% endfor %}
+</feed>

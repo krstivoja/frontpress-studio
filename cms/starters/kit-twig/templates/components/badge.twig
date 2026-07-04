@@ -1,0 +1,4 @@
+{# Badge — <Badge label="New" variant="success" />
+   props: label, variant(neutral|brand|success|warning|danger|info) #}
+{% set variant = variant|default('neutral') %}
+<span class="ds-badge{% if variant != 'neutral' %} ds-badge--{{ variant }}{% endif %}">{{ label|default('Badge') }}</span>

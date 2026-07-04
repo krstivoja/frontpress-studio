@@ -1,0 +1,6 @@
+{# Input field — <Input label="Email" name="email" type="email" placeholder="you@x.com" hint="Never shared" /> #}
+<label class="ds-field">
+  <span class="ds-field__label">{{ label|default('Label') }}</span>
+  <input class="ds-field__input" type="{{ type|default('text') }}" name="{{ name|default('field') }}" placeholder="{{ placeholder|default('') }}" value="{{ value|default('') }}">
+  <span class="ds-field__hint">{{ hint|default('Helper text') }}</span>
+</label>

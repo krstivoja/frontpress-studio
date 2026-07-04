@@ -1,0 +1,7 @@
+{# Alert — <Alert variant="success" title="Saved" body="Your changes were stored." />
+   variant: info|success|warning|danger #}
+{% set variant = variant|default('info') %}
+<div class="ds-alert ds-alert--{{ variant }}" role="alert">
+  <strong class="ds-alert__title">{{ title|default('Notice') }}</strong>
+  <span class="ds-alert__body">{{ body|default('Your message goes here.') }}</span>
+</div>
