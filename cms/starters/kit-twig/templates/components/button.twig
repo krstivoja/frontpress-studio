@@ -1,0 +1,9 @@
+{# Button — <Button label="Save" variant="primary" size="md" href="/go" />
+   props: label, variant(primary|secondary|ghost|danger), size(sm|md|lg), href, type #}
+{% set variant = variant|default('primary') %}
+{% set size    = size|default('md') %}
+{% if href|default('') %}
+<a class="ds-btn ds-btn--{{ variant }} ds-btn--{{ size }}" href="{{ href }}">{{ label|default('Button') }}</a>
+{% else %}
+<button class="ds-btn ds-btn--{{ variant }} ds-btn--{{ size }}" type="{{ type|default('button') }}">{{ label|default('Button') }}</button>
+{% endif %}

@@ -1,0 +1,11 @@
+{# Hero — <Hero eyebrow="Intro" title="Headline" subtitle="Sub" cta_label="Go" cta_href="/start" />
+   Every field renders; omit a prop to fall back to the placeholder, or delete
+   the line you don't need. #}
+<section class="ds-hero">
+  <div class="ds-hero__inner">
+    <span class="ds-hero__eyebrow">{{ eyebrow|default('Eyebrow') }}</span>
+    <h1 class="ds-hero__title">{{ title|default('Headline goes here') }}</h1>
+    <p class="ds-hero__subtitle">{{ subtitle|default('A short supporting sentence under the headline.') }}</p>
+    <Button label={cta_label|default('Get started')} variant="primary" size="lg" href={cta_href|default('#')} />
+  </div>
+</section>

@@ -1,0 +1,11 @@
+{# Card — <Card title="Title" body="Text" eyebrow="Label" image="/x.jpg" href="/go" />
+   Renders as a link. `image` is optional — leave it off and the media area
+   is skipped. #}
+<a class="ds-card" href="{{ href|default('#') }}">
+  {% if image|default('') %}<img class="ds-card__media" src="{{ image }}" alt="{{ title|default('') }}">{% endif %}
+  <div class="ds-card__body">
+    <span class="ds-card__eyebrow">{{ eyebrow|default('Label') }}</span>
+    <h3 class="ds-card__title">{{ title|default('Card title') }}</h3>
+    <p class="ds-card__text">{{ body|default('A short supporting description.') }}</p>
+  </div>
+</a>

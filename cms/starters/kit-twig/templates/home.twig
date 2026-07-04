@@ -1,0 +1,131 @@
+{% extends '_layout.twig' %}
+{% set page_title = meta.title|default('Home') %}
+
+{# Kit demo landing — a live showcase of every bundled component.
+   Routed here when a page sets `template: home` in its front-matter.
+   The component tags below (<Hero />, <Button /> …) are the exact syntax
+   you use in your own content — copy any of them straight out. #}
+
+{% block content %}
+
+<Hero
+  eyebrow="Kit design system"
+  title="Everything you need to build a page"
+  subtitle="Ten prop-driven components, one token file. Copy any tag on this page straight into your content."
+  cta_label="Browse the components"
+  cta_href="#components" />
+
+<div id="components"></div>
+
+{# --- Buttons --- #}
+<section class="ds-section">
+  <div class="ds-section__head">
+    <h2>Buttons</h2>
+    <p class="ds-lead">Four variants, three sizes. <code>&lt;Button label="Save" variant="primary" /&gt;</code></p>
+  </div>
+  <div class="ds-cluster">
+    <Button label="Primary" variant="primary" href="#" />
+    <Button label="Secondary" variant="secondary" href="#" />
+    <Button label="Ghost" variant="ghost" href="#" />
+    <Button label="Danger" variant="danger" href="#" />
+  </div>
+</section>
+
+{# --- Badges --- #}
+<section class="ds-section">
+  <div class="ds-section__head">
+    <h2>Badges</h2>
+    <p class="ds-lead"><code>&lt;Badge label="New" variant="success" /&gt;</code></p>
+  </div>
+  <div class="ds-cluster">
+    <Badge label="Neutral" variant="neutral" />
+    <Badge label="Brand" variant="brand" />
+    <Badge label="Success" variant="success" />
+    <Badge label="Warning" variant="warning" />
+    <Badge label="Danger" variant="danger" />
+    <Badge label="Info" variant="info" />
+  </div>
+</section>
+
+{# --- Features --- #}
+<section class="ds-section">
+  <div class="ds-section__head">
+    <h2>Features</h2>
+    <p class="ds-lead">Icon + title + text, built for grids.</p>
+  </div>
+  <div class="ds-grid ds-grid--3">
+    <Feature icon="⚡" title="Fast by default" body="No build step — components render on the server." />
+    <Feature icon="🎨" title="Token-driven" body="Rebrand the whole theme by editing one CSS block." />
+    <Feature icon="🧩" title="Composable" body="Drop JSX-style tags into Markdown, Twig, or PHP." />
+  </div>
+</section>
+
+{# --- Cards --- #}
+<section class="ds-section">
+  <div class="ds-section__head">
+    <h2>Cards</h2>
+    <p class="ds-lead">Optionally a link, with an image.</p>
+  </div>
+  <div class="ds-grid ds-grid--3">
+    <Card eyebrow="Guide" title="Getting started" body="Activate Kit and open the Pattern Library to preview everything." href="#" />
+    <Card eyebrow="Reference" title="Component tags" body="Every tag maps to a Twig file under templates/components/." href="#" />
+    <Card eyebrow="Extend" title="Make your own" body="Add a .twig file, register it, use it as a tag." href="#" />
+  </div>
+</section>
+
+{# --- Stats --- #}
+<section class="ds-section">
+  <div class="ds-grid ds-grid--3" style="text-align:center">
+    <Stat value="10" label="Bundled components" />
+    <Stat value="0" label="Build steps" />
+    <Stat value="1" label="Token file to rebrand" />
+  </div>
+</section>
+
+{# --- Alerts --- #}
+<section class="ds-section ds-stack">
+  <div class="ds-section__head">
+    <h2>Alerts</h2>
+    <p class="ds-lead">Four semantic variants.</p>
+  </div>
+  <Alert variant="info" title="Heads up" body="This is an informational message." />
+  <Alert variant="success" title="Saved" body="Your changes have been stored." />
+  <Alert variant="warning" title="Careful" body="This action can't be undone." />
+  <Alert variant="danger" title="Error" body="Something went wrong — try again." />
+</section>
+
+{# --- Avatars + input --- #}
+<section class="ds-section">
+  <div class="ds-grid" style="grid-template-columns:1fr 1fr;align-items:start">
+    <div class="ds-stack">
+      <div class="ds-section__head" style="text-align:left;margin:0">
+        <h2>Avatars</h2>
+        <p class="ds-lead">Image or initials fallback.</p>
+      </div>
+      <div class="ds-cluster" style="justify-content:flex-start">
+        <Avatar name="Ada Lovelace" size="sm" />
+        <Avatar name="Marko Krstic" size="md" />
+        <Avatar name="Grace Hopper" size="lg" />
+      </div>
+    </div>
+    <div class="ds-stack">
+      <div class="ds-section__head" style="text-align:left;margin:0">
+        <h2>Inputs</h2>
+        <p class="ds-lead">Labeled field with a hint.</p>
+      </div>
+      <Input label="Email address" name="email" type="email" placeholder="you@example.com" hint="We never share it." />
+    </div>
+  </div>
+</section>
+
+{# --- CTA band --- #}
+<section class="ds-section">
+  <Cta title="Ready to build?" body="Fork any component or start writing content with these tags today." button_label="Read the docs" button_href="/blog" />
+</section>
+
+{# Page body from index.md, if any — rendered as prose. #}
+{% if html is defined and html %}
+  <section class="ds-section prose">{{ html|raw }}</section>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends '_layout.twig' %}
+{% set page_title = (folder|default('Blog'))|capitalize %}
+
+{% block content %}
+<h1>{{ folder|default('Blog')|capitalize }}</h1>
+
+{% if intro and intro.html %}<div class="prose">{{ intro.html|raw }}</div>{% endif %}
+
+{% if posts is iterable and posts|length %}
+  <ul class="archive-list">
+    {% for post in posts %}
+      <li class="archive-item">
+        <a href="{{ post.url }}">{{ post.title }}</a>
+        {% if post.date %}<div class="archive-meta"><time>{{ post.date }}</time></div>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  {{ paginate(page|default(1), total_pages|default(1), '/' ~ folder)|raw }}
+{% else %}
+  <p>No posts yet.</p>
+{% endif %}
+{% endblock %}

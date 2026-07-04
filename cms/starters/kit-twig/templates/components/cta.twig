@@ -1,0 +1,8 @@
+{# CTA band — <Cta title="Ready?" body="Sub" button_label="Start" button_href="/go" /> #}
+<section class="ds-cta">
+  <div class="ds-cta__text">
+    <h2 class="ds-cta__title">{{ title|default('Ready to start?') }}</h2>
+    <p class="ds-cta__body">{{ body|default('A short line that nudges the reader to act.') }}</p>
+  </div>
+  <Button label={button_label|default('Get started')} variant="primary" href={button_href|default('#')} />
+</section>
