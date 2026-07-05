@@ -45,16 +45,22 @@ Ultralight flat-file CMS built in PHP. No database. Content is Markdown files on
 
 Download `frontpress-studio-<version>.zip` from [Releases](https://github.com/krstivoja/frontpress-studio/releases) and unzip its contents into your domain's document root. Visit `/admin` and sign in with **`fpsadmin`** / **`fpspass`** — a persistent banner will nag you until you set a real password under **Settings → Security**.
 
-### Run locally with no desktop app (double-click)
+### Run locally
 
-The zip also ships a launcher that runs the site on your own machine — no
-FrontPress Local, no terminal knowledge required. Unzip, then **double-click
-`start.command`** (macOS/Linux) or **`start.bat`** (Windows). It checks that PHP
-8.1+ and the needed extensions are present, picks a free port, opens `/admin` in
-your browser, and starts the built-in server. On macOS the first launch needs a
-**right-click → Open** (Gatekeeper blocks double-clicking a downloaded script).
-Prefer the terminal? `php -S localhost:8080 router.php` does the same thing. See
-[Run it locally](https://frontpress.studio/docs/run-locally).
+FrontPress is just PHP and files — no database, no build — so anything that runs
+PHP 8.1+ can serve it. A few ways:
+
+- **Terminal** — `php -S localhost:8080 router.php` in the unzipped folder, then
+  open `/admin`.
+- **Double-click launcher** — the zip ships `start.command` (macOS/Linux) and
+  `start.bat` (Windows) that run that command for you and preflight PHP. On macOS
+  the first launch needs a **right-click → Open** (Gatekeeper).
+- **[FrontPress Local](https://github.com/krstivoja/frontpress-local)** — a
+  native macOS app that brings its own PHP and manages your sites with one-click
+  preview and login.
+
+See [Run it locally](https://frontpress.studio/docs/run-locally) for all the
+options, including Local by Flywheel and any PHP host.
 
 ### Source install (development)
 
