@@ -12,6 +12,25 @@
 components (`button.twig`/`button.php` + `button.json`). Build the typed
 contract; migrate the 12 kit components. Then Phase 2 (inserter) uses it.
 
+**Landed (2026-07-05):** typed **Inputs editor** for `inputs[]`, row-by-row
+instead of hand-written JSON, in **two surfaces**:
+- pattern dialog (`PatternFormDialog.jsx`)
+- Theme Builder **sidebar → Fields tab** (`ThemeBuilderFieldsPanel.jsx`),
+  editing the open component's inputs inline + a **Copy/Insert Tag snippet**
+  built from current defaults (early slice of Phase 2's inserter).
+
+Shared plumbing: `ComponentInputRow.jsx` (schema-matched row),
+`ComponentInputsEditor.jsx` (the list, used by both surfaces),
+`lib/componentSnippet.js` (`<Tag/>` builder). Sidebar tab in
+`ThemeCodePanel.jsx`.
+
+Built on the **existing** manifest schema — we considered switching the
+manifest to the taxonomy field schema (`single/array`) to literally reuse
+`FieldRow`, but rejected it: it would drop the `media/link/color/bindable`
+types the inserter (P2) and inspector (P4) depend on, churn 5 files, and
+reverse decision #3. A sibling `ComponentInputRow` (copies FieldRow's
+add/remove pattern) was the lower-cost, non-lossy path.
+
 **Long run / deferred:**
 - Phase 5 — components in Markdown content (`processMarkdown()` wiring +
   allowlist). Not now. Keep components **theme-only** for the moment.

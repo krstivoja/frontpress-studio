@@ -698,24 +698,61 @@ Tag rules:
 
 Default every prop (`|default(...)` in Twig, `?? …` in PHP) so a bare `<Button/>` still renders, and lead the file with a comment documenting the tag + props.
 
-**Register it (optional)** — add the component to `theme.components.json` at the theme root and it appears in the admin **Pattern Library** with a live sample-data preview:
+**Register it (optional) — colocated sidecar manifest.** Drop a `<name>.json`
+next to the template (same stem: `button.twig` + `button.json`) and the
+component appears in the admin **Pattern Library** with a live preview. Same
+model as WordPress `block.json`: code owns the component, the manifest declares
+its typed, editable props.
 
 ```json
 {
-  "components": [
-    {
-      "id": "button",
-      "name": "Button",
-      "template": "templates/components/button.twig",
-      "description": "Action button or link. variant: primary|secondary|ghost|danger, size: sm|md|lg.",
-      "category": "content",
-      "sample": { "label": "Get started", "variant": "primary", "size": "lg", "href": "#" }
-    }
+  "id": "button",
+  "name": "Button",
+  "category": "content",
+  "description": "Action button or link.",
+  "inputs": [
+    { "name": "label",   "type": "text", "default": "Button",  "bindable": true },
+    { "name": "variant", "type": "enum", "default": "primary", "options": ["primary", "secondary", "ghost", "danger"] },
+    { "name": "href",    "type": "link", "bindable": true }
+  ],
+  "examples": [
+    { "name": "Primary", "props": { "label": "Get started", "variant": "primary", "href": "#" } }
   ]
 }
 ```
 
-`id` must match `^[a-z0-9][a-z0-9_-]{0,63}$` and be unique per theme; `template` is a theme-root-relative path (no leading `/`, no `..`) to an existing file; `category` is one of `layout navigation content media forms utility` (else `utility`). Registration only surfaces the component in the Pattern Library — unregistered components still render fine via `component()` / `<Tag/>`. The registry is also editable from the admin UI.
+- Everything optional except a valid `id` (defaults to the filename stem; a
+  leading `_` is stripped). `template` is **implicit** — the sibling file — so
+  it's never written into the JSON. `tag` defaults to `PascalCase(id)`.
+- `inputs[]` entries: `{ name, type, default?, options?(enum), bindable?, label?, placeholder?, hint? }`.
+  `type` ∈ `text richtext number boolean enum media link color component slot`
+  (mirror of `ThemeComponentManifest::PROP_TYPES`). A prop with **no `default`**
+  key renders an empty default in the editor — that's intentional, not a bug
+  (typically paired with `bindable` for CMS-driven props).
+- `examples[]` (`{ name, props }`) drive the preview; `examples[0]` is what the
+  Pattern Library card renders. A legacy top-level `sample` object still works
+  as example #1.
+- `slots[]` (`{ name, allowed, default }`) declare regions that accept other
+  components.
+
+A stray `.json` under `templates/` is treated as a manifest **only** when a
+sibling `.twig`/`.php` with the same stem exists. The old central
+`theme.components.json` is retired but still read as a fallback for any `id` a
+sidecar hasn't claimed; editing such an entry in the admin migrates it to a
+sidecar.
+
+**Authoring inputs in the admin — two surfaces (no hand-JSON needed):**
+
+1. **Pattern Library → Edit info** — dialog with a typed **Inputs** editor
+   (add a prop, pick type, set default, list `enum` choices, toggle bindable).
+2. **Theme Builder sidebar → Fields tab** — when the open file is a component
+   template, edits that component's inputs inline. Same tab shows a **Tag
+   snippet** built from current defaults with **Copy** (clipboard) and
+   **Insert** (at cursor) buttons — the fast path to drop a `<Name … />` into a
+   template. The sidebar is drag-resizable (`ResizableAside`).
+
+Registration only makes the component discoverable/previewable/insertable —
+unregistered components still render fine via `component()` / `<Tag/>`.
 <!-- fp-skill:/components -->
 
 ## Common gotchas
