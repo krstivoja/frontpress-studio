@@ -2,16 +2,39 @@
 #
 # The WordPress-style protection model: framework PHP files live in the
 # webroot but guard themselves with `defined('FRONTPRESS_BOOT') || exit;`, and
-# config.php is plain PHP that emits nothing on direct hit. Apache only
-# needs to (a) block raw markdown source serving, (b) prevent PHP
-# execution under uploads paths, and (c) route clean URLs to the front
-# controllers.
+# config.php is plain PHP that emits nothing on direct hit. Non-PHP sources
+# (markdown, config.json, cms/*, dotfiles) can't self-guard, so Apache denies
+# them outright. Apache (a) blocks raw markdown, (b) denies framework sources,
+# config, and dotfiles, (c) prevents PHP execution under uploads paths, and
+# (d) routes clean URLs to the front controllers.
+#
+# The only paths served as real files are the public assets: admin/assets/*,
+# assets/* (theme assets via the symlink), and site/themes/<name>/assets/*.
+# Everything else 404s here or routes to index.php (which image-serves
+# /uploads/* itself). router.php mirrors this posture for `php -S`.
 
 # Required so the `assets` symlink → `site/themes/<active>/assets` resolves.
 Options +FollowSymLinks -Indexes
 
 # Block raw markdown source (the framework parses these server-side).
 RedirectMatch 404 \.md$
+
+# Deny dotfiles and metadata (.git, .env, .DS_Store, .htaccess), but keep
+# ACME/well-known challenges reachable for TLS issuance.
+RedirectMatch 404 (?i)(^|/)\.(?!well-known/)
+
+# Deny framework sources: everything under cms/ and site/ EXCEPT theme assets
+# (site/themes/<name>/assets/*, also reachable via the /assets symlink).
+RedirectMatch 404 (?i)^/(cms|site)/(?!themes/[^/]+/assets/).
+
+# Deny config, data, and lock files. config.json holds integration
+# credentials; all of these are read server-side, never fetched over HTTP.
+RedirectMatch 404 (?i)\.(json|lock|neon|ya?ml|dist|example|toml|ini|log|sql)$
+
+# Deny the boot/config entrypoints directly. They already self-guard, but a
+# direct hit shouldn't execute them at all — only index.php / admin.php are
+# public. (admin.php lives at admin/index.php; this leaves it untouched.)
+RedirectMatch 404 (?i)^/(bootstrap|config|sample\.config|router)\.php$
 
 <IfModule mod_rewrite.c>
 RewriteEngine On
