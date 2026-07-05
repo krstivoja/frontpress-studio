@@ -82,6 +82,9 @@ class Router
                 case 'unsplash':
                     UnsplashController::handle($rest, $method, $config);
                     return;
+                case 'skills':
+                    SkillsController::handle($rest, $method, $config);
+                    return;
             }
         } catch (\Throwable $e) {
             // Don't leak exception messages to the client by default — they
