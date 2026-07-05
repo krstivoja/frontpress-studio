@@ -1,0 +1,6 @@
+{
+    "id": "post",
+    "name": "Post template",
+    "category": "content",
+    "description": "Single blog post view — title, date, body, taxonomies."
+}

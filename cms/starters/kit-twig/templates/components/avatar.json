@@ -1,0 +1,38 @@
+{
+    "id": "avatar",
+    "name": "Avatar",
+    "tag": "Avatar",
+    "category": "media",
+    "description": "User avatar; falls back to initials when no src is given.",
+    "inputs": [
+        {
+            "name": "src",
+            "type": "media",
+            "bindable": true
+        },
+        {
+            "name": "name",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "size",
+            "type": "enum",
+            "default": "md",
+            "options": [
+                "sm",
+                "md",
+                "lg"
+            ]
+        }
+    ],
+    "examples": [
+        {
+            "name": "Initials",
+            "props": {
+                "name": "Marko Krstic",
+                "size": "lg"
+            }
+        }
+    ]
+}

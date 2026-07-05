@@ -27,6 +27,13 @@ if ($uri !== '/'
     return false;
 }
 
+// FrontPress Local auto-login bridge. Dropped at the webroot by the desktop
+// app (gitignored, not part of Studio); it's a self-guarding one-shot login
+// entrypoint, so let the built-in server execute it directly when present.
+if ($uri === '/fp-local-login.php' && is_file(__DIR__ . '/fp-local-login.php')) {
+    return false;
+}
+
 // /admin and /admin/* → admin SPA shell
 if (preg_match('#^/admin(/|$)#', $uri)) {
     require __DIR__ . '/admin/index.php';

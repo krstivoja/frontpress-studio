@@ -1,0 +1,6 @@
+{
+    "id": "footer",
+    "name": "Site footer",
+    "category": "layout",
+    "description": "Closing slab: copyright, secondary links. Rendered at the bottom of every page via _layout.twig."
+}

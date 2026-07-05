@@ -1,0 +1,34 @@
+{
+    "id": "feature",
+    "name": "Feature",
+    "tag": "Feature",
+    "category": "content",
+    "description": "Icon + title + text block for feature grids.",
+    "inputs": [
+        {
+            "name": "icon",
+            "type": "text",
+            "default": "✨"
+        },
+        {
+            "name": "title",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "body",
+            "type": "text",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Fast",
+            "props": {
+                "icon": "⚡",
+                "title": "Fast by default",
+                "body": "No build step — components render on the server."
+            }
+        }
+    ]
+}

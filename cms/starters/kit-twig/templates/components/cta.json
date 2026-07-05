@@ -1,0 +1,40 @@
+{
+    "id": "cta",
+    "name": "CTA band",
+    "tag": "Cta",
+    "category": "layout",
+    "description": "Call-to-action strip with a button.",
+    "inputs": [
+        {
+            "name": "title",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "body",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "button_label",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "button_href",
+            "type": "link",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Ready to ship",
+            "props": {
+                "title": "Ready to ship?",
+                "body": "Activate the Kit theme and start composing.",
+                "button_label": "Get the theme",
+                "button_href": "#"
+            }
+        }
+    ]
+}

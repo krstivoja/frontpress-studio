@@ -1,0 +1,40 @@
+{
+    "id": "alert",
+    "name": "Alert",
+    "tag": "Alert",
+    "category": "content",
+    "description": "Inline message banner.",
+    "inputs": [
+        {
+            "name": "variant",
+            "type": "enum",
+            "default": "info",
+            "options": [
+                "info",
+                "success",
+                "warning",
+                "danger"
+            ]
+        },
+        {
+            "name": "title",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "body",
+            "type": "text",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Saved",
+            "props": {
+                "variant": "success",
+                "title": "Saved",
+                "body": "Your changes have been stored."
+            }
+        }
+    ]
+}

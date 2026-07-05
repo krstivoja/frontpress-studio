@@ -1,0 +1,6 @@
+{
+    "id": "404",
+    "name": "404 page",
+    "category": "utility",
+    "description": "Fallback rendered when no content matches the request path."
+}

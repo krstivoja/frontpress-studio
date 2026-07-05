@@ -1,0 +1,6 @@
+{
+    "id": "taxonomy",
+    "name": "Taxonomy archive",
+    "category": "content",
+    "description": "Posts filtered by a taxonomy term (e.g. /blog/tag/news)."
+}

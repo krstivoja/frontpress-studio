@@ -1,0 +1,44 @@
+{
+    "id": "card",
+    "name": "Card",
+    "tag": "Card",
+    "category": "content",
+    "description": "Content card rendered as a link. image is optional — leave it off to skip the media area.",
+    "inputs": [
+        {
+            "name": "eyebrow",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "title",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "body",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "image",
+            "type": "media",
+            "bindable": true
+        },
+        {
+            "name": "href",
+            "type": "link",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Feature",
+            "props": {
+                "eyebrow": "Feature",
+                "title": "Ship without a build step",
+                "body": "Server-rendered Twig components you drop straight into content."
+            }
+        }
+    ]
+}
