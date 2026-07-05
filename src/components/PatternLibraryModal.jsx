@@ -196,19 +196,18 @@ function EmptyState({ theme }) {
     <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
       <h3 className="mb-2 text-sm font-semibold">No components registered</h3>
       <p className="text-[12px] leading-relaxed text-zinc-600">
-        Drop a{' '}
-        <code className="rounded bg-white px-1 py-0.5 font-mono">theme.components.json</code>
-        {' '}at <span className="font-mono">site/themes/{theme || '<theme>'}/</span> with one entry per component:
+        Drop a sidecar manifest next to a template — e.g.{' '}
+        <code className="rounded bg-white px-1 py-0.5 font-mono">templates/components/hero.json</code>
+        {' '}beside <span className="font-mono">hero.twig</span> in{' '}
+        <span className="font-mono">site/themes/{theme || '<theme>'}/</span>:
       </p>
       <pre className="mt-2 overflow-x-auto rounded bg-zinc-900 p-3 text-[11px] leading-relaxed text-zinc-100">{`{
-  "components": [
-    {
-      "id":          "hero",
-      "name":        "Hero",
-      "template":    "templates/_hero.twig",
-      "description": "Landing-page hero block.",
-      "category":    "layout"
-    }
+  "id":          "hero",
+  "name":        "Hero",
+  "description": "Landing-page hero block.",
+  "category":    "layout",
+  "inputs": [
+    { "name": "title", "type": "text", "default": "Headline" }
   ]
 }`}</pre>
     </div>

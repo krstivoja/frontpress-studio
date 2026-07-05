@@ -66,14 +66,16 @@ class ComponentPreview
         $renderer = \FrontPress\TemplateRenderer::instance();
 
         // Neutral baseline context — themes commonly read these globals.
-        // Sample overrides whatever the registry declares.
+        // The manifest's first example (falling back to a legacy `sample`)
+        // overrides whatever the registry declares.
         $baseline = [
             'meta'  => ['title' => $comp['name'], 'date' => date('Y-m-d')],
             'html'  => '<p>Sample body content.</p>',
             'posts' => [],
             'pagination' => ['current' => 1, 'total' => 1, 'prev_url' => null, 'next_url' => null],
         ];
-        $vars = array_replace_recursive($baseline, $comp['sample']);
+        $props = $comp['examples'][0]['props'] ?? ($comp['sample'] ?? []);
+        $vars  = array_replace_recursive($baseline, is_array($props) ? $props : []);
 
         // Strip the `templates/` prefix — Twig loader is rooted there.
         $tpl = preg_replace('#^templates/#', '', $comp['template']);

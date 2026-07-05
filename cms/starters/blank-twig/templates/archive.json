@@ -1,0 +1,6 @@
+{
+    "id": "archive",
+    "name": "Archive (post list)",
+    "category": "content",
+    "description": "Folder archive — paginated list of posts under a content folder."
+}

@@ -1,0 +1,6 @@
+{
+    "id": "feed",
+    "name": "RSS feed template",
+    "category": "utility",
+    "description": "Atom/RSS feed for a content folder. Served at /feed.xml."
+}

@@ -1,0 +1,57 @@
+{
+    "id": "button",
+    "name": "Button",
+    "tag": "Button",
+    "category": "content",
+    "description": "Action button or link. Renders an <a> when href is set, otherwise a <button>.",
+    "inputs": [
+        {
+            "name": "label",
+            "type": "text",
+            "default": "Button",
+            "bindable": true
+        },
+        {
+            "name": "variant",
+            "type": "enum",
+            "default": "primary",
+            "options": [
+                "primary",
+                "secondary",
+                "ghost",
+                "danger"
+            ]
+        },
+        {
+            "name": "size",
+            "type": "enum",
+            "default": "md",
+            "options": [
+                "sm",
+                "md",
+                "lg"
+            ]
+        },
+        {
+            "name": "href",
+            "type": "link",
+            "bindable": true
+        },
+        {
+            "name": "type",
+            "type": "text",
+            "default": "button"
+        }
+    ],
+    "examples": [
+        {
+            "name": "Primary",
+            "props": {
+                "label": "Get started",
+                "variant": "primary",
+                "size": "lg",
+                "href": "#"
+            }
+        }
+    ]
+}

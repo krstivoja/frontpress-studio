@@ -1,0 +1,37 @@
+{
+    "id": "badge",
+    "name": "Badge",
+    "tag": "Badge",
+    "category": "content",
+    "description": "Small status pill.",
+    "inputs": [
+        {
+            "name": "label",
+            "type": "text",
+            "default": "Badge",
+            "bindable": true
+        },
+        {
+            "name": "variant",
+            "type": "enum",
+            "default": "neutral",
+            "options": [
+                "neutral",
+                "brand",
+                "success",
+                "warning",
+                "danger",
+                "info"
+            ]
+        }
+    ],
+    "examples": [
+        {
+            "name": "Success",
+            "props": {
+                "label": "New",
+                "variant": "success"
+            }
+        }
+    ]
+}

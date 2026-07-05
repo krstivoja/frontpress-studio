@@ -1,0 +1,28 @@
+{
+    "id": "stat",
+    "name": "Stat",
+    "tag": "Stat",
+    "category": "content",
+    "description": "Single metric with a label.",
+    "inputs": [
+        {
+            "name": "value",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "label",
+            "type": "text",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Uptime",
+            "props": {
+                "value": "98%",
+                "label": "Uptime"
+            }
+        }
+    ]
+}

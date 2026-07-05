@@ -1,0 +1,6 @@
+{
+    "id": "header",
+    "name": "Site header",
+    "category": "layout",
+    "description": "Site title + primary navigation. Rendered at the top of every page via _layout.twig."
+}

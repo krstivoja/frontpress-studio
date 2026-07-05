@@ -1,0 +1,6 @@
+{
+    "id": "page",
+    "name": "Page template",
+    "category": "content",
+    "description": "Single page view — title + body. Used for `pages/*.md` content."
+}

@@ -1,0 +1,49 @@
+{
+    "id": "input",
+    "name": "Input field",
+    "tag": "Input",
+    "category": "forms",
+    "description": "Labeled text input with an optional hint.",
+    "inputs": [
+        {
+            "name": "label",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "name",
+            "type": "text"
+        },
+        {
+            "name": "type",
+            "type": "text",
+            "default": "text"
+        },
+        {
+            "name": "placeholder",
+            "type": "text"
+        },
+        {
+            "name": "hint",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "value",
+            "type": "text",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Email",
+            "props": {
+                "label": "Email address",
+                "name": "email",
+                "type": "email",
+                "placeholder": "you@example.com",
+                "hint": "We never share it."
+            }
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+{
+    "id": "hero",
+    "name": "Hero",
+    "tag": "Hero",
+    "category": "layout",
+    "description": "Full-width hero band with eyebrow, headline, subtitle and a CTA button.",
+    "inputs": [
+        {
+            "name": "eyebrow",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "title",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "subtitle",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "cta_label",
+            "type": "text",
+            "bindable": true
+        },
+        {
+            "name": "cta_href",
+            "type": "link",
+            "bindable": true
+        },
+        {
+            "name": "image",
+            "type": "media",
+            "bindable": true
+        }
+    ],
+    "examples": [
+        {
+            "name": "Landing hero",
+            "props": {
+                "eyebrow": "Design system",
+                "title": "Build faster with Kit",
+                "subtitle": "Prop-driven Twig components you copy straight into your content.",
+                "cta_label": "Explore components",
+                "cta_href": "#"
+            }
+        }
+    ]
+}

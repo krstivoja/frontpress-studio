@@ -1,0 +1,6 @@
+{
+    "id": "contact",
+    "name": "Contact page",
+    "category": "forms",
+    "description": "Page with the built-in contact form rendered via {{ contact_form() }}."
+}

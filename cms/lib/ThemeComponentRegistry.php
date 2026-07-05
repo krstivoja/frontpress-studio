@@ -7,90 +7,68 @@ namespace FrontPress;
 defined('FRONTPRESS_BOOT') || exit;
 
 /**
- * Reads `site/themes/<theme>/theme.components.json` — the per-theme
- * component registry that powers the Pattern Library and (later) the
- * Inspector panel's "what did I just click on" lookup.
+ * Per-component registry for a theme. The typed contract behind the Pattern
+ * Library, the component inserter and (later) the Inspector's "what did I
+ * just click on" lookup.
  *
- * Shape on disk:
- *   {
- *     "components": [
- *       {
- *         "id":          "header",            // stable slug, used by data-fp-component-id
- *         "name":        "Site header",        // display label
- *         "template":    "templates/_header.twig",  // path within the theme
- *         "description": "Top nav and logo.",  // optional
- *         "category":    "layout",             // optional — layout|navigation|content|media|forms|utility
- *         "sample":      { "title": "Demo" }   // optional — sample data for Pattern Library preview
- *       }
- *     ]
- *   }
+ * Source of truth = **colocated sidecar JSON**: a component's metadata lives
+ * next to its template, mirroring WordPress `block.json`:
  *
- * The file is optional — missing or malformed registries return an empty
- * list, never an exception. Theme authors opt in by shipping the JSON.
+ *   templates/components/button.twig
+ *   templates/components/button.json   ← manifest for button
+ *   templates/_header.twig
+ *   templates/_header.json
  *
- * Why a separate JSON rather than annotations in theme.json: theme.json
- * is for global settings (engine, name, version). The component list is
- * a sibling artifact that can grow long; keeping it separate avoids
- * bloating theme.json and makes it ergonomic to lint independently.
+ * A `.json` under `templates/` is treated as a manifest only when a sibling
+ * `.twig`/`.php` with the same stem exists. `id` defaults to the filename
+ * stem (leading `_` stripped); the template is implicit (the sibling), so it
+ * is never stored in the JSON. See {@see ThemeComponentManifest} for the
+ * schema and normalization.
+ *
+ * Legacy fallback: a theme that still ships a central
+ * `theme.components.json` keeps working — its entries surface for any id a
+ * sidecar hasn't already claimed (sidecars win). Editing/deleting such an
+ * entry migrates it to a sidecar (and prunes the central file), so the old
+ * format quietly drains away.
  */
 class ThemeComponentRegistry
 {
     public function __construct(private string $themesDir) {}
 
     /**
-     * List components for a theme. Each entry is normalized — missing
-     * optional fields are filled with defaults so the front-end can
-     * trust the shape.
+     * List components for a theme, normalized + deterministically ordered
+     * (by category, then name).
      *
-     * @return list<array{
-     *   id: string,
-     *   name: string,
-     *   template: string,
-     *   description: string,
-     *   category: string,
-     *   sample: array<string, mixed>,
-     *   template_exists: bool
-     * }>
+     * @return list<array<string, mixed>>
      */
     public function list(string $theme): array
     {
         $themeDir = $this->themesDir . '/' . $theme;
-        $file     = $themeDir . '/theme.components.json';
-        if (!is_file($file)) return [];
+        $out      = [];
+        $seen     = [];
 
-        $raw  = (string)@file_get_contents($file);
-        $data = json_decode($raw, true);
-        if (!is_array($data) || !isset($data['components']) || !is_array($data['components'])) {
-            return [];
+        foreach ($this->scanSidecars($themeDir) as [$jsonPath, $tplRel, $stemId]) {
+            $raw = json_decode((string)@file_get_contents($jsonPath), true);
+            if (!is_array($raw)) continue;
+            $norm = ThemeComponentManifest::normalize($raw, $stemId);
+            if ($norm === null || isset($seen[$norm['id']])) continue;
+            $seen[$norm['id']] = true;
+            $norm['template']        = $tplRel;
+            $norm['template_exists'] = true; // sibling existence is how we found it
+            $out[] = $norm;
         }
 
-        $seen   = [];
-        $out    = [];
-        foreach ($data['components'] as $c) {
-            if (!is_array($c)) continue;
-            $id = (string)($c['id'] ?? '');
-            // Slug-safe id and de-dupe — protects the data-fp-component-id
-            // attribute from accepting whitespace / quotes / repeats.
-            if (!preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/', $id)) continue;
-            if (isset($seen[$id])) continue;
-            $seen[$id] = true;
-
-            $template = (string)($c['template'] ?? '');
-            // Path must be a relative template inside the theme — block
-            // `../` traversal and absolute paths.
-            if ($template === '' || str_contains($template, '..') || $template[0] === '/') continue;
-
-            $absTpl = $themeDir . '/' . $template;
-            $out[] = [
-                'id'              => $id,
-                'name'            => (string)($c['name'] ?? $id),
-                'template'        => $template,
-                'description'     => (string)($c['description'] ?? ''),
-                'category'        => self::normalizeCategory((string)($c['category'] ?? '')),
-                'sample'          => is_array($c['sample'] ?? null) ? $c['sample'] : [],
-                'template_exists' => is_file($absTpl),
-            ];
+        foreach ($this->readLegacy($theme) as $entry) {
+            if (isset($seen[$entry['id']])) continue;
+            $seen[$entry['id']] = true;
+            $out[] = $entry;
         }
+
+        usort($out, static function (array $a, array $b): int {
+            $ca = array_search($a['category'], ThemeComponentManifest::CATEGORIES, true);
+            $cb = array_search($b['category'], ThemeComponentManifest::CATEGORIES, true);
+            return $ca <=> $cb ?: strcasecmp($a['name'], $b['name']);
+        });
         return $out;
     }
 
@@ -104,131 +82,208 @@ class ThemeComponentRegistry
     }
 
     /**
-     * Add a new component to the registry. Returns the persisted entry
-     * (normalized), or throws if id is taken / invalid / template missing.
+     * Register a new component by writing its sidecar. Throws if the id is
+     * taken, the template is missing, or a manifest already exists there.
      *
      * @param array<string, mixed> $patch
      * @return array<string, mixed>
      */
     public function add(string $theme, array $patch): array
     {
-        $clean   = $this->validate($theme, $patch, null);
-        $current = $this->readRaw($theme);
-        foreach ($current as $c) {
-            if (is_array($c) && (string)($c['id'] ?? '') === $clean['id']) {
-                throw new \RuntimeException("A component with id `{$clean['id']}` already exists.");
-            }
+        $clean    = ThemeComponentManifest::forWrite($patch);
+        $template = $this->validateTemplatePath($theme, (string)($patch['template'] ?? ''));
+
+        if ($this->find($theme, $clean['id']) !== null) {
+            throw new \RuntimeException("A component with id `{$clean['id']}` already exists.");
         }
-        $current[] = $clean;
-        $this->writeRaw($theme, $current);
+        $sidecar = $this->sidecarPath($theme, $template);
+        if (is_file($sidecar)) {
+            throw new \RuntimeException('A manifest already exists for that template.');
+        }
+        $this->writeSidecar($sidecar, $clean);
         return $this->find($theme, $clean['id']) ?? $clean;
     }
 
     /**
-     * Update an existing component. `id` may change if `patch['id']` differs
-     * from `$existingId`; the new id must still be unique.
+     * Update an existing component. The id may change (must stay unique). If
+     * the template moves, the sidecar moves with it; a legacy central entry
+     * is migrated to a sidecar and pruned.
      *
      * @param array<string, mixed> $patch
      * @return array<string, mixed>
      */
     public function update(string $theme, string $existingId, array $patch): array
     {
-        $clean   = $this->validate($theme, $patch, $existingId);
-        $current = $this->readRaw($theme);
-        $found   = false;
-        foreach ($current as $i => $c) {
-            if (!is_array($c)) continue;
-            if ((string)($c['id'] ?? '') === $existingId) {
-                $current[$i] = $clean;
-                $found = true;
-                continue;
-            }
-            // Block id collision against OTHER entries.
-            if ((string)($c['id'] ?? '') === $clean['id']) {
-                throw new \RuntimeException("Another component already uses id `{$clean['id']}`.");
-            }
-        }
-        if (!$found) {
+        $existing = $this->find($theme, $existingId);
+        if ($existing === null) {
             throw new \RuntimeException("No component with id `{$existingId}` to update.");
         }
-        $this->writeRaw($theme, $current);
+
+        $clean    = ThemeComponentManifest::forWrite($patch);
+        $template  = $this->validateTemplatePath(
+            $theme,
+            (string)($patch['template'] ?? $existing['template']),
+        );
+
+        if ($clean['id'] !== $existingId && $this->find($theme, $clean['id']) !== null) {
+            throw new \RuntimeException("Another component already uses id `{$clean['id']}`.");
+        }
+
+        $newSidecar = $this->sidecarPath($theme, $template);
+        $oldSidecar = $this->sidecarPath($theme, (string)$existing['template']);
+        if ($oldSidecar !== $newSidecar && is_file($oldSidecar)) {
+            @unlink($oldSidecar);
+        }
+        $this->removeLegacy($theme, $existingId);
+        $this->writeSidecar($newSidecar, $clean);
         return $this->find($theme, $clean['id']) ?? $clean;
     }
 
     public function delete(string $theme, string $id): bool
     {
-        $current = $this->readRaw($theme);
-        $next    = array_values(array_filter(
+        $comp = $this->find($theme, $id);
+        if ($comp === null) return false;
+
+        $removed = false;
+        $sidecar = $this->sidecarPath($theme, (string)$comp['template']);
+        if (is_file($sidecar)) {
+            @unlink($sidecar);
+            $removed = true;
+        }
+        if ($this->removeLegacy($theme, $id)) $removed = true;
+        return $removed;
+    }
+
+    // ── Sidecar discovery + I/O ───────────────────────────────────────────
+
+    /**
+     * Walk `templates/` for `*.json` files that have a sibling template.
+     *
+     * @return list<array{0: string, 1: string, 2: string}>
+     *         [absolute json path, template path relative to theme, stem id]
+     */
+    private function scanSidecars(string $themeDir): array
+    {
+        $tplDir = $themeDir . '/templates';
+        if (!is_dir($tplDir)) return [];
+
+        $out  = [];
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($tplDir, \FilesystemIterator::SKIP_DOTS),
+        );
+        foreach ($iter as $file) {
+            if (!$file->isFile() || strtolower($file->getExtension()) !== 'json') continue;
+            $dir  = $file->getPath();
+            $stem = $file->getBasename('.json');
+            $tpl  = null;
+            foreach (['twig', 'php'] as $ext) {
+                if (is_file($dir . '/' . $stem . '.' . $ext)) {
+                    $tpl = $dir . '/' . $stem . '.' . $ext;
+                    break;
+                }
+            }
+            if ($tpl === null) continue;
+            $tplRel = ltrim(str_replace($themeDir, '', $tpl), '/');
+            $out[]  = [$file->getPathname(), $tplRel, ltrim($stem, '_')];
+        }
+        return $out;
+    }
+
+    /** Resolve where a template's sidecar lives (sibling `<stem>.json`). */
+    private function sidecarPath(string $theme, string $templateRel): string
+    {
+        $abs  = $this->themesDir . '/' . $theme . '/' . $templateRel;
+        $dir  = dirname($abs);
+        $stem = pathinfo($abs, PATHINFO_FILENAME);
+        return $dir . '/' . $stem . '.json';
+    }
+
+    /** @param array<string, mixed> $manifest */
+    private function writeSidecar(string $path, array $manifest): void
+    {
+        $json = json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($json === false || !Fs::atomicWrite($path, (string)$json . "\n")) {
+            throw new \RuntimeException('Could not write component manifest.');
+        }
+    }
+
+    /**
+     * A template path must be relative, inside the theme, no `..`, and point
+     * at a real file. Returns the clean relative path.
+     */
+    private function validateTemplatePath(string $theme, string $template): string
+    {
+        $template = trim($template);
+        if ($template === '' || str_contains($template, '..') || $template[0] === '/') {
+            throw new \RuntimeException('Template path must be relative to the theme (e.g. `templates/_hero.twig`).');
+        }
+        if (!is_file($this->themesDir . '/' . $theme . '/' . $template)) {
+            throw new \RuntimeException("Template file not found: {$template}");
+        }
+        return $template;
+    }
+
+    // ── Legacy central theme.components.json (read-only fallback + prune) ──
+
+    private function centralFile(string $theme): string
+    {
+        return $this->themesDir . '/' . $theme . '/theme.components.json';
+    }
+
+    /**
+     * Normalized entries from a legacy central registry. Each carries an
+     * explicit `template`, validated the same way as a write path.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function readLegacy(string $theme): array
+    {
+        $themeDir = $this->themesDir . '/' . $theme;
+        $out      = [];
+        foreach ($this->readCentralRaw($theme) as $c) {
+            if (!is_array($c)) continue;
+            $norm = ThemeComponentManifest::normalize($c, (string)($c['id'] ?? ''));
+            if ($norm === null) continue;
+
+            $template = trim((string)($c['template'] ?? ''));
+            if ($template === '' || str_contains($template, '..') || $template[0] === '/') continue;
+            $norm['template']        = $template;
+            $norm['template_exists'] = is_file($themeDir . '/' . $template);
+            $out[] = $norm;
+        }
+        return $out;
+    }
+
+    /** @return list<mixed> raw component entries from the central file */
+    private function readCentralRaw(string $theme): array
+    {
+        $file = $this->centralFile($theme);
+        if (!is_file($file)) return [];
+        $data = json_decode((string)@file_get_contents($file), true);
+        if (!is_array($data) || !is_array($data['components'] ?? null)) return [];
+        return array_values($data['components']);
+    }
+
+    /** Drop an id from the central file. Returns true if anything changed. */
+    private function removeLegacy(string $theme, string $id): bool
+    {
+        $current = $this->readCentralRaw($theme);
+        if ($current === []) return false;
+        $next = array_values(array_filter(
             $current,
             fn ($c) => !is_array($c) || (string)($c['id'] ?? '') !== $id,
         ));
         if (count($next) === count($current)) return false;
-        $this->writeRaw($theme, $next);
-        return true;
-    }
 
-    /**
-     * Validate + normalize a component payload. Throws RuntimeException
-     * with user-facing message on validation failure.
-     *
-     * @param array<string, mixed> $patch
-     * @return array<string, mixed>
-     */
-    private function validate(string $theme, array $patch, ?string $existingId): array
-    {
-        $id = strtolower(trim((string)($patch['id'] ?? '')));
-        if (!preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/', $id)) {
-            throw new \RuntimeException('Id must be lowercase letters, digits, dashes or underscores (no spaces).');
+        $file = $this->centralFile($theme);
+        if ($next === []) {
+            @unlink($file);
+            return true;
         }
-
-        $template = trim((string)($patch['template'] ?? ''));
-        if ($template === '' || str_contains($template, '..') || $template[0] === '/') {
-            throw new \RuntimeException('Template path must be relative to the theme (e.g. `templates/_hero.twig`).');
-        }
-        $absTpl = $this->themesDir . '/' . $theme . '/' . $template;
-        if (!is_file($absTpl)) {
-            throw new \RuntimeException("Template file not found: {$template}");
-        }
-
-        return [
-            'id'          => $id,
-            'name'        => trim((string)($patch['name'] ?? $id)),
-            'template'    => $template,
-            'description' => trim((string)($patch['description'] ?? '')),
-            'category'    => self::normalizeCategory((string)($patch['category'] ?? '')),
-            // Sample stays optional and free-form — themes use whatever
-            // variables their template expects.
-            'sample'      => is_array($patch['sample'] ?? null) ? $patch['sample'] : [],
-        ];
-    }
-
-    /** @return list<array<string, mixed>> raw on-disk component entries */
-    private function readRaw(string $theme): array
-    {
-        $file = $this->themesDir . '/' . $theme . '/theme.components.json';
-        if (!is_file($file)) return [];
-        $data = json_decode((string)@file_get_contents($file), true);
-        if (!is_array($data) || !isset($data['components']) || !is_array($data['components'])) return [];
-        return array_values($data['components']);
-    }
-
-    /** @param list<array<string, mixed>> $components */
-    private function writeRaw(string $theme, array $components): void
-    {
-        $file = $this->themesDir . '/' . $theme . '/theme.components.json';
-        $json = json_encode(
-            ['components' => array_values($components)],
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
-        );
+        $json = json_encode(['components' => $next], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         if ($json === false || !Fs::atomicWrite($file, (string)$json)) {
-            throw new \RuntimeException('Could not write theme.components.json');
+            throw new \RuntimeException('Could not update theme.components.json');
         }
-    }
-
-    private static function normalizeCategory(string $raw): string
-    {
-        $allowed = ['layout', 'navigation', 'content', 'media', 'forms', 'utility'];
-        $raw     = strtolower(trim($raw));
-        return in_array($raw, $allowed, true) ? $raw : 'utility';
+        return true;
     }
 }
