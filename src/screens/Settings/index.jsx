@@ -8,6 +8,7 @@ export default function Settings() {
         <Tab to="/settings" end>Site settings</Tab>
         <Tab to="/settings/themes">Themes</Tab>
         <Tab to="/settings/reference">Theme reference</Tab>
+        <Tab to="/settings/skills">Skills</Tab>
         <Tab to="/settings/seo">SEO</Tab>
         <Tab to="/settings/email">Email</Tab>
         <Tab to="/settings/integrations">Integrations</Tab>

@@ -73,18 +73,44 @@ For a given page request:
 4. Taxonomy URLs → `taxonomy.twig`.
 5. 404 → `404.twig`.
 
+<!-- fp-skill:twig -->
 `_layout.twig` is the base. Pages `{% extends '_layout.twig' %}` and override `{% block content %}`.
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+PHP has no `{% extends %}`. Each route template includes the layout chrome via `partial()` calls, or wraps its body with `ob_start()` and requires a shared `_layout.php` — see the **PHP-engine themes** section below.
+<!-- fp-skill:/php -->
 
-## Twig globals (always available)
+## Globals (always available)
+
+<!-- fp-skill:twig -->
+In Twig templates, `config` and `query` are global variables:
 
 | Global | Type | What |
 |--------|------|------|
 | `config` | array | `site/config.json` flattened. `config.site.name`, `config.active_theme`, `config.taxonomies`, `config.forms`, etc. |
 | `query` | array | mirror of `$_GET` — use for `?sent=1` success banners |
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+In PHP templates, the same data hangs off `$GLOBALS`:
 
-## Template helpers (Twig functions)
+```php
+$config = $GLOBALS['fp_config'];   // FrontPress\Config — $config->get('key', $default) / ->all()
+$index  = $GLOBALS['fp_index'];    // FrontPress\Index — direct post-index access
+```
 
-All are autoescape-safe where they return HTML.
+`$_GET` is available directly for `?sent=1`-style success banners.
+<!-- fp-skill:/php -->
+
+## Template helpers
+
+All are available in every template. In Twig they're functions; in PHP they're global functions of the same name.
+
+<!-- fp-skill:twig -->
+Twig autoescapes output, so helpers that return HTML are marked safe (or pipe through `|raw`).
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+PHP does **not** autoescape — wrap every value you interpolate in `e()` (except `$html` / `$intro['html']`, which are already trusted HTML).
+<!-- fp-skill:/php -->
 
 | Helper | Signature | Notes |
 |--------|-----------|-------|
@@ -113,12 +139,17 @@ posts([
 // → array<int, array{title, url, slug, date, folder, meta, ...}>
 ```
 
-Each returned post is the same shape as `posts` in `archive.twig`. Access front-matter fields via `meta.<key>`.
+Each returned post is the same shape as the `posts` variable an archive template receives.
 
+<!-- fp-skill:twig -->
 **Twig templates cannot call `posts()` directly** — it's not registered as a Twig function. Two ways to use it from a Twig theme:
 
 1. **PHP partial** — write the loop in `_<name>.php` and call it from Twig via `{{ partial('<name>') }}`. This is the standard pattern for custom archives, related-post lists, recent-posts widgets, etc.
 2. **Pre-populate via the template render** — for archives, `archive.twig` already receives `posts` as a variable, so most of the time you don't need to call `posts()` at all.
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+**PHP templates call `posts()` directly** — it's a global function, so a `post.php` or `_widget.php` can `foreach (posts([...]) as $post) { … }` inline. No partial indirection needed.
+<!-- fp-skill:/php -->
 
 ## `partial()` — extend templates with components or PHP
 
@@ -180,16 +211,20 @@ Any other front-matter key is preserved and accessible as `meta.<key>` in templa
 
 When the editor's featured-image picker writes a post, `image:` is **always a 2-element YAML array**: `[url, original-filename]`. The renderer accepts both forms (plain string or array) — but if you hand-edit a post to use the string form and then re-save through the admin, the admin reformats it back to array. Templates that need to dereference should:
 
+<!-- fp-skill:twig -->
 ```twig
 {# Twig: handles both forms #}
 {% set hero = page.meta.image is iterable ? page.meta.image|first : page.meta.image %}
 <img src="{{ hero }}" alt="{{ page.title }}">
 ```
-
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
 ```php
-// PHP partial: same idea
-$hero = is_array($p['meta']['image'] ?? null) ? $p['meta']['image'][0] : ($p['meta']['image'] ?? '');
+<?php // PHP: same idea
+$hero = is_array($meta['image'] ?? null) ? $meta['image'][0] : ($meta['image'] ?? ''); ?>
+<img src="<?= e($hero) ?>" alt="<?= e($meta['title'] ?? '') ?>">
 ```
+<!-- fp-skill:/php -->
 
 ## Folder-based content modelling
 
@@ -296,6 +331,7 @@ Form field types:
 
 Embed in a template:
 
+<!-- fp-skill:twig -->
 ```twig
 {% if query.sent is defined %}
   <p class="ok">Thanks — we'll be in touch.</p>
@@ -303,6 +339,17 @@ Embed in a template:
 {{ contact_form()|raw }}             {# default form name 'contact' #}
 {{ contact_form('rsvp')|raw }}       {# any configured form #}
 ```
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+```php
+<?php if (isset($_GET['sent'])): ?>
+  <p class="ok">Thanks — we'll be in touch.</p>
+<?php endif; ?>
+<?= contact_form() ?>            <!-- default form name 'contact' -->
+<?= contact_form('rsvp') ?>     <!-- any configured form -->
+```
+`contact_form()` returns trusted HTML — don't wrap it in `e()`.
+<!-- fp-skill:/php -->
 
 Submissions arrive as draft `.md` files in `site/content/<form-name>/`. The folder is 404'd publicly (only subpaths under it — `/contact/*` — are blocked; `/contact` the page is free).
 
@@ -387,6 +434,7 @@ JSON-LD: `BlogPosting` for posts (any post in a folder other than `pages/`), `We
 
 ### Folder archive with intro
 
+<!-- fp-skill:twig -->
 ```twig
 {# archive.twig — render the folder's _index.md as intro, then the post grid #}
 {% if intro and intro.html %}
@@ -407,6 +455,29 @@ JSON-LD: `BlogPosting` for posts (any post in a folder other than `pages/`), `We
 
 <div class="pagination">{{ paginate(page|default(1), total_pages|default(1), '/' ~ folder)|raw }}</div>
 ```
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+```php
+<?php /* archive.php — render the folder's _index.md as intro, then the post grid */ ?>
+<?php if (!empty($intro['html'])): ?>
+  <div class="archive__intro prose"><?= $intro['html'] ?></div>
+<?php endif; ?>
+
+<ul class="post-grid">
+  <?php foreach ($posts as $post): ?>
+    <li>
+      <a href="<?= e($post['url']) ?>">
+        <h2><?= e($post['title']) ?></h2>
+        <time><?= e($post['date']) ?></time>
+        <?php if (!empty($post['excerpt'])): ?><p><?= e($post['excerpt']) ?></p><?php endif; ?>
+      </a>
+    </li>
+  <?php endforeach; ?>
+</ul>
+
+<div class="pagination"><?= paginate($page ?? 1, $total_pages ?? 1, '/' . $folder) ?></div>
+```
+<!-- fp-skill:/php -->
 
 ### Custom field rendered in template
 
@@ -424,14 +495,24 @@ features:
 ```
 
 Template:
+<!-- fp-skill:twig -->
 ```twig
 <p>Launches {{ meta.launch_date }} at ${{ meta.price_usd }}.</p>
 <ul>
   {% for f in meta.features %}<li>{{ f }}</li>{% endfor %}
 </ul>
 ```
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+```php
+<p>Launches <?= e($meta['launch_date']) ?> at $<?= e($meta['price_usd']) ?>.</p>
+<ul>
+  <?php foreach ($meta['features'] ?? [] as $f): ?><li><?= e($f) ?></li><?php endforeach; ?>
+</ul>
+```
+<!-- fp-skill:/php -->
 
-No registration step — any unknown front-matter key is preserved and reachable as `meta.<key>`. If you want the admin to expose it as an editable field, configure it under **Settings → Fields**.
+No registration step — any unknown front-matter key is preserved and reachable as `meta.<key>` (`$meta['<key>']` in PHP). If you want the admin to expose it as an editable field, configure it under **Settings → Fields**.
 
 ### Custom archive driven by a folder + custom field (the showcase pattern)
 
@@ -440,8 +521,8 @@ Goal: a `/showcase` page that lists every post in `site/content/showcase/` as a 
 Pieces:
 
 1. **`site/content/pages/showcase.md`** — the page itself, sets `template: showcase`.
-2. **`site/themes/<theme>/templates/showcase.twig`** — page template (hero + calls partial).
-3. **`site/themes/<theme>/templates/_showcase-grid.php`** — PHP partial that loops `posts()` (needed because `posts()` isn't available in Twig).
+2. **`site/themes/<theme>/templates/showcase.{twig,php}`** — page template (hero + calls partial).
+3. **`site/themes/<theme>/templates/_showcase-grid.php`** — PHP partial that loops `posts()`. A Twig theme needs this because `posts()` isn't callable in Twig; a PHP theme could inline the loop in `showcase.php` instead, but a partial keeps the page template clean either way.
 
 The page front matter:
 
@@ -454,6 +535,7 @@ template: showcase
 Sites built with FrontPress Studio.
 ```
 
+<!-- fp-skill:twig -->
 `showcase.twig`:
 
 ```twig
@@ -468,8 +550,27 @@ Sites built with FrontPress Studio.
   </section>
 {% endblock %}
 ```
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+`showcase.php`:
 
-`_showcase-grid.php`:
+```php
+<?php ob_start(); ?>
+<section class="showcase">
+  <header>
+    <h1><?= e($meta['title'] ?? '') ?></h1>
+    <?php if (!empty($html)): ?><div class="prose"><?= $html ?></div><?php endif; ?>
+  </header>
+  <?php partial('showcase-grid'); ?>
+</section>
+<?php
+$content    = ob_get_clean();
+$page_title = $meta['title'] ?? 'Showcase';
+require __DIR__ . '/_layout.php';
+```
+<!-- fp-skill:/php -->
+
+`_showcase-grid.php` (a PHP partial — used by both engines):
 
 ```php
 <?php
@@ -517,6 +618,7 @@ When the user adds a new showcase entry through the admin: new post under `showc
 
 Posts have `section: <name>` in front matter; `archive.twig` walks them in sort order and emits a heading when `section` changes from the previous entry. **Sort is by date desc**, so to keep a section together, give its entries adjacent dates.
 
+<!-- fp-skill:php -->
 ## PHP-engine themes
 
 Set `"engine": "php"` in `theme.json` and templates become `.php` instead of `.twig` (the `blank-php` starter is the reference). Everything above still applies — same routes, helpers, `posts()`, front matter, fields/forms, per-post media — only the **template syntax** differs. The two engines are interchangeable per-template: drop a `post.php` next to a `post.twig` and PHP wins; delete it and Twig takes over.
@@ -561,6 +663,9 @@ require __DIR__ . '/_layout.php';
 
 `feed.php` is the exception — it emits Atom XML and includes no HTML chrome. Prefer Twig for new themes (auto-escape kills a class of bugs); reach for PHP when a template needs to call arbitrary PHP inline.
 
+<!-- fp-skill:/php -->
+
+<!-- fp-skill:components -->
 ## Components (reusable, prop-driven)
 
 A **component** is a partial under `templates/components/<name>.{twig,php}` built to be reused with props (label, variant, image…) — the FrontPress equivalent of a design-system element (Button, Card, Hero). Two ways to render one.
@@ -611,10 +716,16 @@ Default every prop (`|default(...)` in Twig, `?? …` in PHP) so a bare `<Button
 ```
 
 `id` must match `^[a-z0-9][a-z0-9_-]{0,63}$` and be unique per theme; `template` is a theme-root-relative path (no leading `/`, no `..`) to an existing file; `category` is one of `layout navigation content media forms utility` (else `utility`). Registration only surfaces the component in the Pattern Library — unregistered components still render fine via `component()` / `<Tag/>`. The registry is also editable from the admin UI.
+<!-- fp-skill:/components -->
 
 ## Common gotchas
 
+<!-- fp-skill:twig -->
 1. **Twig autoescape is HTML** — rendered Markdown body must be `{{ html|raw }}`. Helpers tagged `is_safe: html` already mark themselves safe.
+<!-- fp-skill:/twig -->
+<!-- fp-skill:php -->
+1. **PHP does not autoescape** — wrap every interpolated value in `e()`; echo `$html` / `$intro['html']` raw (already rendered HTML). This is the #1 XSS pitfall in PHP themes.
+<!-- fp-skill:/php -->
 2. **Date-driven sorting** — `order:` is advisory only. To reorder docs, change `date:`.
 3. **`_index.md` is special** — it's the folder archive intro, NOT a regular post. Don't link to it from posts.
 4. **Form folder is 404'd publicly** — `/contact/*` is blocked. `/contact` the page is free. If you add `forms.feedback`, `/feedback/*` will be blocked too.

@@ -20,6 +20,7 @@ const Themes       = lazy(() => import('./screens/Settings/Themes.jsx'));
 const ThemeBuilder = lazy(() => import('./screens/ThemeBuilder.jsx'));
 const Security     = lazy(() => import('./screens/Settings/Security.jsx'));
 const ThemeReference = lazy(() => import('./screens/Settings/ThemeReference.jsx'));
+const Skills         = lazy(() => import('./screens/Settings/Skills.jsx'));
 const SeoSettings    = lazy(() => import('./screens/Settings/SeoSettings.jsx'));
 const EmailSettings  = lazy(() => import('./screens/Settings/Email.jsx'));
 const Integrations   = lazy(() => import('./screens/Settings/Integrations.jsx'));
@@ -52,6 +53,7 @@ export default function App() {
               <Route index           element={<Lazy><SiteSettings /></Lazy>} />
               <Route path="themes"    element={<Lazy><Themes /></Lazy>} />
               <Route path="reference" element={<Lazy><ThemeReference /></Lazy>} />
+              <Route path="skills"    element={<Lazy><Skills /></Lazy>} />
               <Route path="seo"          element={<Lazy><SeoSettings /></Lazy>} />
               <Route path="email"        element={<Lazy><EmailSettings /></Lazy>} />
               <Route path="integrations" element={<Lazy><Integrations /></Lazy>} />
