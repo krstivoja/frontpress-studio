@@ -1,6 +1,6 @@
 ---
 name: frontpress-theme
-description: FrontPress Studio theme authoring and content modeling — site/themes/<name>/ Twig templates, theme.json, asset pipeline, Twig globals (config, query) and helpers (contact_form, paginate, seo_head, slug_url, asset_url, partial), front-matter schema for posts/pages, taxonomies and folder-based archives, fields/forms configurator (forms.<name>.fields[] in site/config.json), starter conventions. Use when building or editing themes, writing content, or configuring fields/forms — NOT when editing framework PHP under cms/.
+description: FrontPress Studio theme authoring and content modeling — site/themes/<name>/ templates (Twig or PHP engine, set by theme.json), theme.json, asset pipeline, globals (config, query) and helpers (contact_form, paginate, seo_head, slug_url, asset_url, partial), reusable prop-driven components (component() helper, self-closing <Tag/> syntax, theme.components.json Pattern Library registry), front-matter schema for posts/pages, taxonomies and folder-based archives, fields/forms configurator (forms.<name>.fields[] in site/config.json), starter conventions. Use when building or editing themes, writing content, or configuring fields/forms — NOT when editing framework PHP under cms/.
 license: MIT
 ---
 
@@ -516,6 +516,101 @@ When the user adds a new showcase entry through the admin: new post under `showc
 ### Section-grouped docs archive
 
 Posts have `section: <name>` in front matter; `archive.twig` walks them in sort order and emits a heading when `section` changes from the previous entry. **Sort is by date desc**, so to keep a section together, give its entries adjacent dates.
+
+## PHP-engine themes
+
+Set `"engine": "php"` in `theme.json` and templates become `.php` instead of `.twig` (the `blank-php` starter is the reference). Everything above still applies — same routes, helpers, `posts()`, front matter, fields/forms, per-post media — only the **template syntax** differs. The two engines are interchangeable per-template: drop a `post.php` next to a `post.twig` and PHP wins; delete it and Twig takes over.
+
+Three things change in PHP:
+
+1. **No auto-escaping.** Twig escapes for you; PHP does not. Wrap every value going into HTML in `e()` — except `$html` (the rendered Markdown body) and `$intro['html']`, which are already trusted. Forgetting `e()` is the most common XSS mistake in PHP themes.
+2. **Route variables are `$`-prefixed** and already in local scope (the framework `extract()`s them). `meta` → `$meta`, `html` → `$html`, `posts` → `$posts` (alias `$items`), `folder` → `$folder`, plus `$page`/`$total_pages`/`$per_page` on archives, `$term`/`$label`/`$taxonomy` on taxonomy routes. `posts()` **is** callable directly in a PHP template (no partial needed, unlike Twig).
+3. **No `{% extends %}`.** Wrap the route's content and include a shared layout. The `ob_start()` + `_layout.php` form is preferred — self-contained partials keep the Theme Builder's click-to-source mapping accurate:
+
+```php
+<?php /* templates/post.php */ ?>
+<?php ob_start(); ?>
+<article>
+  <h1><?= e($meta['title'] ?? '') ?></h1>
+  <?= $html ?>
+</article>
+<?php
+$content    = ob_get_clean();
+$page_title = $meta['title'] ?? 'Post';
+require __DIR__ . '/_layout.php';
+```
+
+```php
+<?php /* templates/_layout.php */ ?>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title><?= e($page_title ?? 'Site') ?></title>
+  <link rel="stylesheet" href="<?= e(asset_url('style.css')) ?>">
+</head>
+<body>
+  <div class="container">
+    <?php partial('header'); ?>
+    <main><?= $content ?></main>
+    <?php partial('footer'); ?>
+  </div>
+</body>
+</html>
+```
+
+`feed.php` is the exception — it emits Atom XML and includes no HTML chrome. Prefer Twig for new themes (auto-escape kills a class of bugs); reach for PHP when a template needs to call arbitrary PHP inline.
+
+## Components (reusable, prop-driven)
+
+A **component** is a partial under `templates/components/<name>.{twig,php}` built to be reused with props (label, variant, image…) — the FrontPress equivalent of a design-system element (Button, Card, Hero). Two ways to render one.
+
+**1. The `component()` helper** — call it in any template:
+
+```twig
+{{ component('button', { label: 'Save', variant: 'primary', href: '/go' }) }}
+```
+```php
+<?php component('button', ['label' => 'Save', 'variant' => 'primary', 'href' => '/go']); ?>
+```
+
+`component('button', …)` is exactly `partial('components/button', …)` — components *are* partials under `templates/components/`, and the partial resolution order still applies.
+
+**2. JSX-like tags** — write a self-closing PascalCase tag; the framework transpiles it to a `component()` call before the template compiles (Twig via `ComponentTagLoader`; PHP via `ComponentTagProcessor::processPhp` on cache):
+
+```twig
+<Button label="Save" variant="primary" href="/go" />
+{# → {{ component('button', { 'label': 'Save', 'variant': 'primary', 'href': '/go' }) }} #}
+```
+
+Tag rules:
+
+- **PascalCase name only** — `<Button/>`, `<CtaBar/>`. Lowercase/kebab tags (`<button>`, `<my-el>`) stay plain HTML.
+- **Self-closing only** — `<Hero />`, never `<Hero>…</Hero>`.
+- **Name → file**: lowercased and dash-split. `<CtaBar/>` → `component('cta-bar')` → `templates/components/cta-bar.{twig,php}`.
+- **Two attribute forms**: `label="Save"` is a double-quoted **string literal**; `image={…}` braces mean an **engine expression** inserted verbatim — Twig inside braces in `.twig` (`image={meta.image}`), PHP inside braces in `.php` (`image={$meta['image']}`). Must not contain a literal `}`; empty `{}` is dropped.
+- **Templates only.** Not processed inside Markdown content — don't put `<Button/>` in a `.md` body.
+
+Default every prop (`|default(...)` in Twig, `?? …` in PHP) so a bare `<Button/>` still renders, and lead the file with a comment documenting the tag + props.
+
+**Register it (optional)** — add the component to `theme.components.json` at the theme root and it appears in the admin **Pattern Library** with a live sample-data preview:
+
+```json
+{
+  "components": [
+    {
+      "id": "button",
+      "name": "Button",
+      "template": "templates/components/button.twig",
+      "description": "Action button or link. variant: primary|secondary|ghost|danger, size: sm|md|lg.",
+      "category": "content",
+      "sample": { "label": "Get started", "variant": "primary", "size": "lg", "href": "#" }
+    }
+  ]
+}
+```
+
+`id` must match `^[a-z0-9][a-z0-9_-]{0,63}$` and be unique per theme; `template` is a theme-root-relative path (no leading `/`, no `..`) to an existing file; `category` is one of `layout navigation content media forms utility` (else `utility`). Registration only surfaces the component in the Pattern Library — unregistered components still render fine via `component()` / `<Tag/>`. The registry is also editable from the admin UI.
 
 ## Common gotchas
 
