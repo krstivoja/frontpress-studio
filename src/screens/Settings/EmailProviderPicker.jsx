@@ -47,9 +47,10 @@ const PROVIDERS = [
     accent: 'text-red-700 bg-red-100',
     icon: mailgunIcon,
     host: 'smtp.mailgun.org',
+    hosts: ['smtp.mailgun.org', 'smtp.eu.mailgun.org'],
     port: 587,
     encryption: 'tls',
-    note: 'SMTP credentials from your Mailgun domain settings.',
+    note: 'SMTP credentials from your Mailgun domain settings. US-region domains use smtp.mailgun.org; EU-region domains use smtp.eu.mailgun.org.',
   },
   {
     slug: 'sendgrid',
@@ -109,9 +110,11 @@ const PROVIDERS = [
 
 // Pick the provider tile whose host the current config matches. SES is
 // matched by prefix because operators change the region; everything
-// else is a literal host match. Returns null when the host doesn't match
-// any known provider — that's a legitimate state (self-hosted Postfix,
-// ProtonMail Bridge, etc.), and no tile lighting up is the right signal.
+// else is a literal host match against the provider's canonical host or
+// any regional alias in `hosts` (e.g. Mailgun US vs EU). Returns null when
+// the host doesn't match any known provider — that's a legitimate state
+// (self-hosted Postfix, ProtonMail Bridge, etc.), and no tile lighting up
+// is the right signal.
 export function detectProvider(host) {
   // Empty host = no SMTP configured = PHP mail() fallback. Surfacing this as
   // an active tile (rather than no selection) makes the default state legible
@@ -119,7 +122,10 @@ export function detectProvider(host) {
   if (!host) return PROVIDERS.find((p) => p.slug === 'php');
   const lower = String(host).toLowerCase();
   if (lower.startsWith('email-smtp.')) return PROVIDERS.find((p) => p.slug === 'ses');
-  return PROVIDERS.find((p) => p.host && p.host.toLowerCase() === lower) || null;
+  return PROVIDERS.find((p) => {
+    const candidates = p.hosts || (p.host ? [p.host] : []);
+    return candidates.some((h) => h.toLowerCase() === lower);
+  }) || null;
 }
 
 export default function EmailProviderPicker({ activeHost, onPick }) {
