@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { useAuth } from '../lib/auth.jsx';
 import Sidebar from './Sidebar.jsx';
+import Button from './ui/Button.jsx';
+
+const DISMISS_KEY = 'fp:default-password-banner-dismissed';
 
 // Outer chrome: optional top banner + the (Sidebar | content) row.
 // `<PostTypeShell />` renders as a fragment (PostTypeList + Outlet) — those
@@ -34,24 +38,41 @@ export function PaddedOutlet() {
   );
 }
 
-// Persistent banner — does not auto-dismiss. Disappears the instant the
-// password is rotated (auth refreshes after the change-password mutation).
+// Banner — disappears the instant the password is rotated (auth refreshes
+// after the change-password mutation). Can also be dismissed manually; the
+// dismissal is remembered in localStorage so it stays hidden across reloads.
 // Tone is checklist-item, not alarm: "finish setup" rather than "insecure".
 function DefaultPasswordBanner() {
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(DISMISS_KEY) === '1',
+  );
+
+  if (dismissed) return null;
+
+  function dismiss() {
+    localStorage.setItem(DISMISS_KEY, '1');
+    setDismissed(true);
+  }
+
   return (
     <div
       role="status"
       className="flex items-center justify-between gap-4 border-b border-amber-200 bg-amber-50 px-6 py-2.5 text-sm text-amber-900"
     >
-      <span>
-        Set a strong admin password to finish setup.
-      </span>
-      <Link
-        to="/settings/security"
-        className="font-medium underline decoration-amber-400 underline-offset-2 hover:decoration-amber-700"
-      >
-        Open Security settings
-      </Link>
+      <div className="flex items-center gap-3">
+        <span>
+          Set a strong admin password to finish setup.
+        </span>
+        <Link
+          to="/settings/security"
+          className="font-medium underline decoration-amber-400 underline-offset-2 hover:decoration-amber-700"
+        >
+          Open Security settings
+        </Link>
+      </div>
+      <Button variant="secondary" size="sm" onClick={dismiss}>
+        Dismiss
+      </Button>
     </div>
   );
 }
