@@ -57,9 +57,38 @@ class Updater
             'version'   => ltrim($data['tag_name'], 'v'),
             'tag'       => $data['tag_name'],
             'notes'     => $data['body']         ?? '',
-            'zip_url'   => $data['zipball_url']  ?? '',
+            'zip_url'   => self::releaseZipUrl($data),
             'published' => $data['published_at'] ?? '',
         ];
+    }
+
+    /**
+     * Pick the download URL for an update.
+     *
+     * Prefer the built **release-asset** zip (`frontpress-studio-<v>.zip`
+     * attached to the release by CI). GitHub's auto-generated `zipball_url`
+     * is a `git archive` of the tag — it OMITS every gitignored path, which
+     * includes the compiled admin SPA (`admin/assets/`) and `cms/vendor/`.
+     * Downloading the zipball updates tracked PHP but silently leaves the
+     * admin UI (and Composer deps) frozen, so new front-end features never
+     * appear after an in-app update. The release asset carries both.
+     *
+     * The asset `browser_download_url` is on `github.com` (redirects to
+     * objects.githubusercontent.com, which cURL follows), so it passes
+     * {@see isAllowedZipUrl}. Fall back to the zipball only if a release
+     * has no attached `.zip` asset.
+     *
+     * @param array<string, mixed> $data releases/latest payload
+     */
+    private static function releaseZipUrl(array $data): string
+    {
+        foreach ($data['assets'] ?? [] as $asset) {
+            $u = $asset['browser_download_url'] ?? '';
+            if (is_string($u) && str_ends_with($u, '.zip')) {
+                return $u;
+            }
+        }
+        return $data['zipball_url'] ?? '';
     }
 
     /**
