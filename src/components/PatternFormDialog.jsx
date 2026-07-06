@@ -107,17 +107,26 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
     }
 
     setBusy(true);
+    const base = editing ? { ...editing } : {};
+    const component = {
+      ...base,
+      id,
+      name: name.trim(),
+      template: template.trim(),
+      description: description.trim(),
+      category,
+      inputs,
+      sample,
+    };
+    if (editing) {
+      component.examples = mergeSampleIntoExamples(editing.examples, sample);
+    } else {
+      component.sample = sample;
+    }
+
     const payload = {
       theme: theme || undefined,
-      component: {
-        id,
-        name: name.trim(),
-        template: template.trim(),
-        description: description.trim(),
-        category,
-        inputs,
-        sample,
-      },
+      component,
     };
     try {
       const endpoint = editing ? '/themes/components-update' : '/themes/components-add';
@@ -233,4 +242,18 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
       </div>
     </div>
   );
+}
+
+function mergeSampleIntoExamples(examples, sample) {
+  if (!Array.isArray(examples) || examples.length === 0) {
+    return Object.keys(sample).length ? [{ name: 'Default', props: sample }] : [];
+  }
+  const [first, ...rest] = examples;
+  return [
+    {
+      ...first,
+      props: sample,
+    },
+    ...rest,
+  ];
 }

@@ -747,9 +747,9 @@ sidecar.
    (add a prop, pick type, set default, list `enum` choices, toggle bindable).
 2. **Theme Builder sidebar → Fields tab** — when the open file is a component
    template, edits that component's inputs inline. Same tab shows a **Tag
-   snippet** built from current defaults with **Copy** (clipboard) and
-   **Insert** (at cursor) buttons — the fast path to drop a `<Name … />` into a
-   template. The sidebar is drag-resizable (`ResizableAside`).
+   snippet** built from current defaults with **Copy** (clipboard) — the fast
+   path to drop a `<Name … />` into a template. The sidebar is drag-resizable
+   (`ResizableAside`).
 
 Registration only makes the component discoverable/previewable/insertable —
 unregistered components still render fine via `component()` / `<Tag/>`.

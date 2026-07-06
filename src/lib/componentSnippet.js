@@ -56,13 +56,17 @@ export function buildComponentSnippet(component, inputs, path) {
   if (!canUseTag(tag, id)) {
     return buildHelperCall(id, list, syntaxFromPath(path));
   }
-  const attrs = list
+  const entries = list
     .filter((i) => i && i.name)
-    .map((i) => {
-      const literal = defaultLiteral(i);
+    .map((input) => ({ input, literal: defaultLiteral(input) }));
+  if (entries.some(({ literal }) => !literal.expr && String(literal.value).includes('"'))) {
+    return buildHelperCall(id, list, syntaxFromPath(path));
+  }
+  const attrs = entries
+    .map(({ input, literal }) => {
       return literal.expr
-        ? `${i.name}={${literal.value}}`
-        : `${i.name}="${attrValue(literal.value)}"`;
+        ? `${input.name}={${literal.value}}`
+        : `${input.name}="${attrValue(literal.value)}"`;
     });
   return attrs.length
     ? `<${tag} ${attrs.join(' ')} />`
