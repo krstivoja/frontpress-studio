@@ -1,6 +1,6 @@
 ---
 name: frontpress-theme
-description: FrontPress Studio theme authoring and content modeling — site/themes/<name>/ templates (Twig or PHP engine, set by theme.json), theme.json, asset pipeline, globals (config, query) and helpers (contact_form, paginate, seo_head, slug_url, asset_url, partial), reusable prop-driven components (component() helper, self-closing <Tag/> syntax, theme.components.json Pattern Library registry), front-matter schema for posts/pages, taxonomies and folder-based archives, fields/forms configurator (forms.<name>.fields[] in site/config.json), starter conventions. Use when building or editing themes, writing content, or configuring fields/forms — NOT when editing framework PHP under cms/.
+description: FrontPress Studio theme authoring and content modeling — site/themes/<name>/ templates (Twig or PHP engine, set by theme.json), theme.json, asset pipeline, globals (config, query) and helpers (contact_form, paginate, seo_head, slug_url, asset_url, partial), reusable prop-driven components (component() helper, self-closing <Tag/> syntax, colocated sidecar <name>.json manifests with a typed inputs[] editor in the Pattern Library + Theme Builder Fields tab), front-matter schema for posts/pages, taxonomies and folder-based archives, fields/forms configurator (forms.<name>.fields[] in site/config.json), starter conventions. Use when building or editing themes, writing content, or configuring fields/forms — NOT when editing framework PHP under cms/.
 license: MIT
 ---
 
