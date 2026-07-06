@@ -14,6 +14,29 @@ function stringValue(v) {
   return String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+function booleanLiteral(v) {
+  const value = String(v ?? 'false').trim().toLowerCase();
+  return v === true || value === 'true' || value === '1' ? 'true' : 'false';
+}
+
+function numberLiteral(v) {
+  const value = String(v ?? '').trim();
+  if (value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? String(number) : null;
+}
+
+function defaultLiteral(input) {
+  if (input.type === 'boolean') {
+    return { expr: true, value: booleanLiteral(input.default) };
+  }
+  if (input.type === 'number') {
+    const value = numberLiteral(input.default);
+    if (value !== null) return { expr: true, value };
+  }
+  return { expr: false, value: String(input.default ?? '') };
+}
+
 function toKebab(tag) {
   return String(tag || '').replace(/(?<!^)[A-Z]/g, '-$&').toLowerCase();
 }
@@ -35,7 +58,12 @@ export function buildComponentSnippet(component, inputs, path) {
   }
   const attrs = list
     .filter((i) => i && i.name)
-    .map((i) => `${i.name}="${attrValue(i.default)}"`);
+    .map((i) => {
+      const literal = defaultLiteral(i);
+      return literal.expr
+        ? `${i.name}={${literal.value}}`
+        : `${i.name}="${attrValue(literal.value)}"`;
+    });
   return attrs.length
     ? `<${tag} ${attrs.join(' ')} />`
     : `<${tag} />`;
@@ -48,9 +76,13 @@ export function buildComponentTag(component, inputs) {
 function buildHelperCall(id, inputs, syntax) {
   const parts = (inputs || [])
     .filter((i) => i && i.name)
-    .map((i) => syntax === 'php'
-      ? `'${i.name}' => '${stringValue(i.default)}'`
-      : `'${i.name}': '${stringValue(i.default)}'`);
+    .map((i) => {
+      const literal = defaultLiteral(i);
+      const value = literal.expr ? literal.value : `'${stringValue(literal.value)}'`;
+      return syntax === 'php'
+        ? `'${i.name}' => ${value}`
+        : `'${i.name}': ${value}`;
+    });
 
   if (syntax === 'php') {
     return `<?php component('${id}', [${parts.join(', ')}]); ?>`;

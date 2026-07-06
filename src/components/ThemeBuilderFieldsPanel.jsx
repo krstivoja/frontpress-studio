@@ -38,16 +38,37 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     [data, selectedTemplate, compId],
   );
 
-  // Local, editable copy of the manifest inputs. Re-seeded whenever we
-  // switch to a different component.
-  const [inputs, setInputs] = useState([]);
+  const componentKey = component
+    ? `${component.id}\n${normalizeTemplatePath(component.template)}`
+    : null;
+  const componentInputs = useMemo(
+    () => (Array.isArray(component?.inputs) ? component.inputs : []),
+    [component],
+  );
+  const [editor, setEditor] = useState({ componentKey: null, inputs: [], sourceInputs: [] });
   useEffect(() => {
-    setInputs(Array.isArray(component?.inputs) ? component.inputs : []);
-  }, [component]);
+    setEditor((current) => {
+      if (!componentKey) {
+        return current.componentKey === null && current.inputs.length === 0 && current.sourceInputs.length === 0
+          ? current
+          : { componentKey: null, inputs: [], sourceInputs: [] };
+      }
+      const currentDirty = JSON.stringify(current.inputs) !== JSON.stringify(current.sourceInputs);
+      if (current.componentKey !== componentKey || !currentDirty) {
+        return { componentKey, inputs: componentInputs, sourceInputs: componentInputs };
+      }
+      return current;
+    });
+  }, [componentKey, componentInputs]);
+  const inputs = editor.componentKey === componentKey ? editor.inputs : componentInputs;
+  const sourceInputs = editor.componentKey === componentKey ? editor.sourceInputs : componentInputs;
+  const setInputs = (nextInputs) => {
+    setEditor((current) => ({ ...current, componentKey, inputs: nextInputs }));
+  };
 
   const [busy, setBusy] = useState(false);
   const dirty = component
-    && JSON.stringify(inputs) !== JSON.stringify(component.inputs || []);
+    && JSON.stringify(inputs) !== JSON.stringify(sourceInputs);
 
   if (!compId) {
     return (
@@ -78,11 +99,15 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     }
     setBusy(true);
     try {
+      const savedInputs = inputs;
       await api.post('/themes/components-update', {
         theme:     theme || undefined,
         id:        component.id,
-        component: { ...component, inputs },
+        component: { ...component, inputs: savedInputs },
       });
+      setEditor((current) => current.componentKey === componentKey
+        ? { ...current, inputs: savedInputs, sourceInputs: savedInputs }
+        : current);
       qc.invalidateQueries({ queryKey: ['theme-components', theme] });
       toast.show(`Saved inputs for "${component.name}".`, { tone: 'success' });
     } catch (e) {
