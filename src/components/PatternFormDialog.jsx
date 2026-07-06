@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Button, Field, Input, Select, Textarea } from './ui/index.js';
 import ComponentInputsEditor from './ComponentInputsEditor.jsx';
-import { validateComponentInputs } from '../lib/componentInputs.js';
+import { normalizeComponentInputs, validateComponentInputs } from '../lib/componentInputs.js';
 
 const CATEGORIES = [
   { value: 'layout',     label: 'Layout' },
@@ -115,7 +115,7 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
       template: template.trim(),
       description: description.trim(),
       category,
-      inputs,
+      inputs: normalizeComponentInputs(inputs),
       sample,
     };
     if (editing) {

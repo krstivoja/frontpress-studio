@@ -4,7 +4,7 @@ import { api } from '../lib/api.js';
 import { useToast } from '../lib/toast.jsx';
 import { Button } from './ui/index.js';
 import ComponentInputsEditor from './ComponentInputsEditor.jsx';
-import { validateComponentInputs } from '../lib/componentInputs.js';
+import { normalizeComponentInputs, validateComponentInputs } from '../lib/componentInputs.js';
 import { buildComponentSnippet } from '../lib/componentSnippet.js';
 
 /**
@@ -113,7 +113,8 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     }
     setBusy(true);
     try {
-      const savedInputs = inputs;
+      const savedDraft  = inputs;
+      const savedInputs = normalizeComponentInputs(inputs);
       await api.post('/themes/components-update', {
         theme:     theme || undefined,
         id:        component.id,
@@ -122,12 +123,15 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
       setEditors((current) => {
         const existing = current[componentKey];
         if (!existing) return current;
-        if (inputsEqual(existing.inputs, savedInputs)) {
+        // No further edits during the round-trip → adopt the canonical
+        // (type-coerced) saved form so the editor and baseline stay equal.
+        if (inputsEqual(existing.inputs, savedDraft)) {
           return {
             ...current,
             [componentKey]: { inputs: savedInputs, sourceInputs: savedInputs },
           };
         }
+        // User kept editing mid-save → keep their draft, advance the baseline.
         return {
           ...current,
           [componentKey]: { ...existing, sourceInputs: savedInputs },

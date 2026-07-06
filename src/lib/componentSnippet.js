@@ -80,10 +80,6 @@ export function buildComponentSnippet(component, inputs, path) {
     : `<${tag} />`;
 }
 
-export function buildComponentTag(component, inputs) {
-  return buildComponentSnippet(component, inputs);
-}
-
 function buildHelperCall(id, inputs, syntax) {
   const parts = (inputs || [])
     .filter((i) => i && i.name)

@@ -110,9 +110,12 @@ export default function ComponentInputRow({ input, onChange, onRemove }) {
                 rows={3}
                 value={(input.options || []).join('\n')}
                 onChange={e => onChange({ options: e.target.value.split('\n') })}
-                onBlur={e => onChange({
-                  options: e.target.value.split('\n').map(s => s.trim()).filter(Boolean),
-                })}
+                onBlur={e => {
+                  const options = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+                  const patch = { options };
+                  if (input.default && !options.includes(input.default)) patch.default = '';
+                  onChange(patch);
+                }}
               />
             </label>
           )}
