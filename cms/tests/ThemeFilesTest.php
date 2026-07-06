@@ -69,7 +69,7 @@ class ThemeFilesTest extends TestCase
         $result = $this->files->create('blank', 'templates/page.twig', '<main>Clobber</main>');
 
         $this->assertFalse($result['ok']);
-        $this->assertSame('Theme file already exists', $result['error']);
+        $this->assertSame('Destination already exists', $result['error']);
     }
 
     public function testRejectsPathTraversal(): void
