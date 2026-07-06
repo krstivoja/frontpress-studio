@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
 import CodeEditor from './CodeEditor.jsx';
 import ThemeBuilderComponentsPanel from './ThemeBuilderComponentsPanel.jsx';
+import ThemeBuilderFieldsPanel from './ThemeBuilderFieldsPanel.jsx';
+import ResizableAside from './ResizableAside.jsx';
 import { findAncestorsAtLine } from '../lib/themeBuilderBlocks.js';
 
 const SNIPPETS_OPEN_KEY = 'fp:theme-builder:snippets-open';
+const SIDEBAR_TAB_KEY   = 'fp:theme-builder:sidebar-tab';
 
 export default function ThemeCodePanel({
   selectedPath,
@@ -37,6 +40,13 @@ export default function ThemeCodePanel({
       return next;
     });
   }
+  const [tab, setTab] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_TAB_KEY) || 'snippets'; } catch { return 'snippets'; }
+  });
+  function selectTab(next) {
+    setTab(next);
+    try { localStorage.setItem(SIDEBAR_TAB_KEY, next); } catch {}
+  }
 
   return (
     <div className="flex min-h-0 flex-1 border-t border-zinc-200 bg-white">
@@ -59,19 +69,47 @@ export default function ThemeCodePanel({
         />
       </div>
       {open && (
-        <aside className="flex w-72 shrink-0 flex-col border-l border-zinc-200 bg-zinc-50">
-          <div className="flex h-7 shrink-0 items-center border-b border-zinc-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-            Snippets
+        <ResizableAside
+          storageKey="fp:theme-builder:sidebar-width"
+          side="left"
+          defaultWidth={288}
+          min={240}
+          max={620}
+          className="flex flex-col border-l border-zinc-200 bg-zinc-50"
+        >
+          <div className="flex h-7 shrink-0 items-stretch border-b border-zinc-200 bg-white text-[11px] font-semibold uppercase tracking-wider">
+            {[['snippets', 'Snippets'], ['fields', 'Fields']].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => selectTab(key)}
+                aria-pressed={tab === key}
+                className={`px-3 transition-colors ${
+                  tab === key
+                    ? 'border-b-2 border-zinc-900 text-zinc-900'
+                    : 'text-zinc-400 hover:text-zinc-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <ThemeBuilderComponentsPanel
-              isTwig={isTwig}
-              files={files}
-              theme={theme}
-              onInsert={onInsertSnippet}
-            />
+            {tab === 'snippets' ? (
+              <ThemeBuilderComponentsPanel
+                isTwig={isTwig}
+                files={files}
+                theme={theme}
+                onInsert={onInsertSnippet}
+              />
+            ) : (
+              <ThemeBuilderFieldsPanel
+                theme={theme}
+                selectedPath={selectedPath}
+              />
+            )}
           </div>
-        </aside>
+        </ResizableAside>
       )}
     </div>
   );

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Button, Field, Input, Select, Textarea } from './ui/index.js';
+import ComponentInputsEditor from './ComponentInputsEditor.jsx';
+import { normalizeComponentInputs, validateComponentInputs } from '../lib/componentInputs.js';
 
 const CATEGORIES = [
   { value: 'layout',     label: 'Layout' },
@@ -30,6 +32,8 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
   // Stored as a string in form state so the user can have it in a half-typed
   // / invalid state without us blowing up; parsed on submit.
   const [sampleText, setSampleText] = useState('');
+  // Typed prop schema (button.json `inputs[]`). Edited row-by-row below.
+  const [inputs,      setInputs]      = useState([]);
   const [busy,        setBusy]        = useState(false);
   const [error,       setError]       = useState(null);
 
@@ -45,10 +49,12 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
         ? JSON.stringify(editing.sample, null, 2)
         : '';
       setSampleText(s);
+      setInputs(Array.isArray(editing.inputs) ? editing.inputs : []);
     } else {
       setId(''); setName(''); setTemplate('');
       setDescription(''); setCategory('layout');
       setSampleText('');
+      setInputs([]);
     }
     setError(null);
   }, [open, editing]);
@@ -94,17 +100,33 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
       }
     }
 
+    const inputError = validateComponentInputs(inputs);
+    if (inputError) {
+      setError(inputError);
+      return;
+    }
+
     setBusy(true);
+    const base = editing ? { ...editing } : {};
+    const component = {
+      ...base,
+      id,
+      name: name.trim(),
+      template: template.trim(),
+      description: description.trim(),
+      category,
+      inputs: normalizeComponentInputs(inputs),
+      sample,
+    };
+    if (editing) {
+      component.examples = mergeSampleIntoExamples(editing.examples, sample);
+    } else {
+      component.sample = sample;
+    }
+
     const payload = {
       theme: theme || undefined,
-      component: {
-        id,
-        name: name.trim(),
-        template: template.trim(),
-        description: description.trim(),
-        category,
-        sample,
-      },
+      component,
     };
     try {
       const endpoint = editing ? '/themes/components-update' : '/themes/components-add';
@@ -127,10 +149,10 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
       aria-modal="true"
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-modal"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-zinc-100 px-5 py-3">
+        <header className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-5 py-3">
           <h3 className="text-sm font-semibold">{editing ? 'Edit pattern' : 'Add pattern'}</h3>
           <button
             type="button"
@@ -144,7 +166,7 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
           </button>
         </header>
 
-        <form onSubmit={submit} className="space-y-3 px-5 py-4">
+        <form onSubmit={submit} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
           <Field label="ID">
             <Input
               value={id}
@@ -185,6 +207,8 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
             />
           </Field>
 
+          <ComponentInputsEditor inputs={inputs} onChange={setInputs} />
+
           <Field label="Sample data (JSON)">
             <Textarea
               rows={6}
@@ -218,4 +242,18 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
       </div>
     </div>
   );
+}
+
+function mergeSampleIntoExamples(examples, sample) {
+  if (!Array.isArray(examples) || examples.length === 0) {
+    return Object.keys(sample).length ? [{ name: 'Default', props: sample }] : [];
+  }
+  const [first, ...rest] = examples;
+  return [
+    {
+      ...first,
+      props: sample,
+    },
+    ...rest,
+  ];
 }
