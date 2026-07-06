@@ -105,9 +105,13 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
         id:        component.id,
         component: { ...component, inputs: savedInputs },
       });
-      setEditor((current) => current.componentKey === componentKey
-        ? { ...current, inputs: savedInputs, sourceInputs: savedInputs }
-        : current);
+      setEditor((current) => {
+        if (current.componentKey !== componentKey) return current;
+        if (JSON.stringify(current.inputs) === JSON.stringify(savedInputs)) {
+          return { ...current, inputs: savedInputs, sourceInputs: savedInputs };
+        }
+        return { ...current, sourceInputs: savedInputs };
+      });
       qc.invalidateQueries({ queryKey: ['theme-components', theme] });
       toast.show(`Saved inputs for "${component.name}".`, { tone: 'success' });
     } catch (e) {
@@ -120,6 +124,11 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
   const snippet = buildComponentSnippet(component, inputs, selectedPath);
 
   async function copyTag() {
+    const inputError = validateComponentInputs(inputs);
+    if (inputError) {
+      toast.show(inputError, { tone: 'error', duration: 5000 });
+      return;
+    }
     try {
       await navigator.clipboard.writeText(snippet);
       toast.show('Tag copied to clipboard.', { tone: 'success' });
