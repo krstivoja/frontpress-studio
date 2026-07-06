@@ -4,7 +4,8 @@ import { api } from '../lib/api.js';
 import { useToast } from '../lib/toast.jsx';
 import { Button } from './ui/index.js';
 import ComponentInputsEditor from './ComponentInputsEditor.jsx';
-import { buildComponentTag } from '../lib/componentSnippet.js';
+import { validateComponentInputs } from '../lib/componentInputs.js';
+import { buildComponentSnippet } from '../lib/componentSnippet.js';
 
 /**
  * Sidebar "Fields" tab for the Theme Builder. When the open file is a
@@ -16,10 +17,11 @@ import { buildComponentTag } from '../lib/componentSnippet.js';
  * Also offers a FanCoolo-style copy: the `<Tag …/>` snippet built from the
  * current (possibly unsaved) input defaults, ready to paste into a template.
  */
-export default function ThemeBuilderFieldsPanel({ theme, selectedPath, onInsert }) {
+export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
   const qc    = useQueryClient();
   const toast = useToast();
   const compId = componentIdFromPath(selectedPath);
+  const selectedTemplate = normalizeTemplatePath(selectedPath);
 
   const { data } = useQuery({
     queryKey: ['theme-components', theme],
@@ -27,8 +29,13 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath, onInsert 
     enabled:  !!theme && !!compId,
   });
   const component = useMemo(
-    () => (data?.components || []).find((c) => c.id === compId) || null,
-    [data, compId],
+    () => {
+      const components = data?.components || [];
+      return components.find((c) => normalizeTemplatePath(c.template) === selectedTemplate)
+        || components.find((c) => c.id === compId)
+        || null;
+    },
+    [data, selectedTemplate, compId],
   );
 
   // Local, editable copy of the manifest inputs. Re-seeded whenever we
@@ -64,20 +71,17 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath, onInsert 
     // Send the FULL manifest so update()'s forWrite doesn't reset name /
     // category / examples — only inputs changed, but forWrite rebuilds
     // from whatever we pass.
+    const inputError = validateComponentInputs(inputs);
+    if (inputError) {
+      toast.show(inputError, { tone: 'error', duration: 5000 });
+      return;
+    }
     setBusy(true);
     try {
       await api.post('/themes/components-update', {
         theme:     theme || undefined,
         id:        component.id,
-        component: {
-          id:          component.id,
-          name:        component.name,
-          description: component.description,
-          category:    component.category,
-          tag:         component.tag,
-          examples:    component.examples,
-          inputs,
-        },
+        component: { ...component, inputs },
       });
       qc.invalidateQueries({ queryKey: ['theme-components', theme] });
       toast.show(`Saved inputs for "${component.name}".`, { tone: 'success' });
@@ -88,11 +92,11 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath, onInsert 
     }
   }
 
-  const tag = buildComponentTag(component, inputs);
+  const snippet = buildComponentSnippet(component, inputs, selectedPath);
 
   async function copyTag() {
     try {
-      await navigator.clipboard.writeText(tag);
+      await navigator.clipboard.writeText(snippet);
       toast.show('Tag copied to clipboard.', { tone: 'success' });
     } catch {
       toast.show('Copy failed — select and copy manually.', { tone: 'error' });
@@ -118,17 +122,8 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath, onInsert 
           template or content file. */}
       <div className="rounded-md border border-zinc-200 bg-white p-2">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-zinc-600">Tag snippet</span>
+          <span className="text-[11px] font-semibold text-zinc-600">Snippet</span>
           <div className="flex gap-1.5">
-            {onInsert && (
-              <button
-                type="button"
-                onClick={() => onInsert(tag)}
-                className="rounded px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-              >
-                Insert
-              </button>
-            )}
             <button
               type="button"
               onClick={copyTag}
@@ -138,7 +133,7 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath, onInsert 
             </button>
           </div>
         </div>
-        <pre className="overflow-x-auto rounded bg-zinc-900 p-2 text-[11px] leading-snug text-zinc-100">{tag}</pre>
+        <pre className="overflow-x-auto rounded bg-zinc-900 p-2 text-[11px] leading-snug text-zinc-100">{snippet}</pre>
       </div>
     </div>
   );
@@ -154,4 +149,8 @@ function componentIdFromPath(path) {
   const m = String(path).match(/(?:^|\/)components\/([^/]+)\.(?:twig|php)$/i);
   if (!m) return null;
   return m[1].replace(/^_/, '').toLowerCase();
+}
+
+function normalizeTemplatePath(path) {
+  return String(path || '').replace(/^\/+/, '');
 }

@@ -1,9 +1,3 @@
-// Build the author-facing snippet for a component from its manifest, so
-// the sidebar (and later the inserter) can offer a copy-paste tag using
-// the declared prop defaults — the same self-closing PascalCase syntax
-// documented in the Components docs.
-
-/** `button` → `Button`, `pricing-card` → `PricingCard`. */
 export function pascalCase(id) {
   return String(id || '')
     .split(/[-_]/)
@@ -12,24 +6,54 @@ export function pascalCase(id) {
     .join('');
 }
 
-/** Escape a value for a double-quoted HTML/JSX attribute. */
 function attrValue(v) {
   return String(v ?? '').replace(/"/g, '&quot;');
 }
 
-/**
- * Return the `<Tag prop="default" … />` string for a component.
- * `inputs` override the manifest's own (so the sidebar can reflect
- * unsaved edits). Every declared input becomes an attribute; its value
- * is the input's default (empty string when none).
- */
-export function buildComponentTag(component, inputs) {
+function stringValue(v) {
+  return String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function toKebab(tag) {
+  return String(tag || '').replace(/(?<!^)[A-Z]/g, '-$&').toLowerCase();
+}
+
+function syntaxFromPath(path) {
+  return /\.php$/i.test(String(path || '')) ? 'php' : 'twig';
+}
+
+function canUseTag(tag, id) {
+  return /^[A-Z][a-zA-Z0-9]*$/.test(tag) && toKebab(tag) === id;
+}
+
+export function buildComponentSnippet(component, inputs, path) {
   const tag = component?.tag || pascalCase(component?.id);
   const list = Array.isArray(inputs) ? inputs : (component?.inputs || []);
+  const id = String(component?.id || '');
+  if (!canUseTag(tag, id)) {
+    return buildHelperCall(id, list, syntaxFromPath(path));
+  }
   const attrs = list
     .filter((i) => i && i.name)
     .map((i) => `${i.name}="${attrValue(i.default)}"`);
   return attrs.length
     ? `<${tag} ${attrs.join(' ')} />`
     : `<${tag} />`;
+}
+
+export function buildComponentTag(component, inputs) {
+  return buildComponentSnippet(component, inputs);
+}
+
+function buildHelperCall(id, inputs, syntax) {
+  const parts = (inputs || [])
+    .filter((i) => i && i.name)
+    .map((i) => syntax === 'php'
+      ? `'${i.name}' => '${stringValue(i.default)}'`
+      : `'${i.name}': '${stringValue(i.default)}'`);
+
+  if (syntax === 'php') {
+    return `<?php component('${id}', [${parts.join(', ')}]); ?>`;
+  }
+  return `{{ component('${id}', {${parts.join(', ')}}) }}`;
 }

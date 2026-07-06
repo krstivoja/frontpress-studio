@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { Button, Field, Input, Select, Textarea } from './ui/index.js';
 import ComponentInputsEditor from './ComponentInputsEditor.jsx';
+import { validateComponentInputs } from '../lib/componentInputs.js';
 
 const CATEGORIES = [
   { value: 'layout',     label: 'Layout' },
@@ -99,13 +100,10 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
       }
     }
 
-    // Inputs: every declared prop needs a valid identifier name, else the
-    // server silently drops it — surface that here instead.
-    for (const it of inputs) {
-      if (!/^[a-zA-Z_]\w*$/.test(it.name || '')) {
-        setError(`Input name "${it.name || ''}" is invalid — use letters, digits, underscore; no leading digit.`);
-        return;
-      }
+    const inputError = validateComponentInputs(inputs);
+    if (inputError) {
+      setError(inputError);
+      return;
     }
 
     setBusy(true);

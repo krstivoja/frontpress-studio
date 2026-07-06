@@ -106,9 +106,6 @@ export default function ThemeCodePanel({
               <ThemeBuilderFieldsPanel
                 theme={theme}
                 selectedPath={selectedPath}
-                onInsert={(tagText) =>
-                  onInsertSnippet({ lines: String(tagText).split('\n'), target: 'content' })
-                }
               />
             )}
           </div>
