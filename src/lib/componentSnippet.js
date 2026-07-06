@@ -45,6 +45,13 @@ function syntaxFromPath(path) {
   return /\.php$/i.test(String(path || '')) ? 'php' : 'twig';
 }
 
+function renderName(component) {
+  const template = String(component?.template || '').replace(/^\/+/, '');
+  const match = template.match(/^templates\/components\/([^/]+)\.(?:twig|php)$/i);
+  if (match) return match[1].replace(/^_/, '').toLowerCase();
+  return String(component?.id || '');
+}
+
 function canUseTag(tag, id) {
   return /^[A-Z][a-zA-Z0-9]*$/.test(tag) && toKebab(tag) === id;
 }
@@ -52,15 +59,15 @@ function canUseTag(tag, id) {
 export function buildComponentSnippet(component, inputs, path) {
   const tag = component?.tag || pascalCase(component?.id);
   const list = Array.isArray(inputs) ? inputs : (component?.inputs || []);
-  const id = String(component?.id || '');
-  if (!canUseTag(tag, id)) {
-    return buildHelperCall(id, list, syntaxFromPath(path));
+  const name = renderName(component);
+  if (!canUseTag(tag, name)) {
+    return buildHelperCall(name, list, syntaxFromPath(path));
   }
   const entries = list
     .filter((i) => i && i.name)
     .map((input) => ({ input, literal: defaultLiteral(input) }));
   if (entries.some(({ literal }) => !literal.expr && String(literal.value).includes('"'))) {
-    return buildHelperCall(id, list, syntaxFromPath(path));
+    return buildHelperCall(name, list, syntaxFromPath(path));
   }
   const attrs = entries
     .map(({ input, literal }) => {

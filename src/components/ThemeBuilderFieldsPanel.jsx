@@ -45,25 +45,39 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     () => (Array.isArray(component?.inputs) ? component.inputs : []),
     [component],
   );
-  const [editor, setEditor] = useState({ componentKey: null, inputs: [], sourceInputs: [] });
+  const [editors, setEditors] = useState({});
   useEffect(() => {
-    setEditor((current) => {
-      if (!componentKey) {
-        return current.componentKey === null && current.inputs.length === 0 && current.sourceInputs.length === 0
-          ? current
-          : { componentKey: null, inputs: [], sourceInputs: [] };
+    if (!componentKey) return;
+    setEditors((current) => {
+      const existing = current[componentKey];
+      if (!existing) {
+        return {
+          ...current,
+          [componentKey]: { inputs: componentInputs, sourceInputs: componentInputs },
+        };
       }
-      const currentDirty = JSON.stringify(current.inputs) !== JSON.stringify(current.sourceInputs);
-      if (current.componentKey !== componentKey || !currentDirty) {
-        return { componentKey, inputs: componentInputs, sourceInputs: componentInputs };
+      const currentDirty = !inputsEqual(existing.inputs, existing.sourceInputs);
+      if (!currentDirty && !inputsEqual(existing.sourceInputs, componentInputs)) {
+        return {
+          ...current,
+          [componentKey]: { inputs: componentInputs, sourceInputs: componentInputs },
+        };
       }
       return current;
     });
   }, [componentKey, componentInputs]);
-  const inputs = editor.componentKey === componentKey ? editor.inputs : componentInputs;
-  const sourceInputs = editor.componentKey === componentKey ? editor.sourceInputs : componentInputs;
+  const editor = componentKey ? editors[componentKey] : null;
+  const inputs = editor ? editor.inputs : componentInputs;
+  const sourceInputs = editor ? editor.sourceInputs : componentInputs;
   const setInputs = (nextInputs) => {
-    setEditor((current) => ({ ...current, componentKey, inputs: nextInputs }));
+    if (!componentKey) return;
+    setEditors((current) => ({
+      ...current,
+      [componentKey]: {
+        inputs: nextInputs,
+        sourceInputs: current[componentKey]?.sourceInputs || componentInputs,
+      },
+    }));
   };
 
   const [busy, setBusy] = useState(false);
@@ -105,12 +119,19 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
         id:        component.id,
         component: { ...component, inputs: savedInputs },
       });
-      setEditor((current) => {
-        if (current.componentKey !== componentKey) return current;
-        if (JSON.stringify(current.inputs) === JSON.stringify(savedInputs)) {
-          return { ...current, inputs: savedInputs, sourceInputs: savedInputs };
+      setEditors((current) => {
+        const existing = current[componentKey];
+        if (!existing) return current;
+        if (inputsEqual(existing.inputs, savedInputs)) {
+          return {
+            ...current,
+            [componentKey]: { inputs: savedInputs, sourceInputs: savedInputs },
+          };
         }
-        return { ...current, sourceInputs: savedInputs };
+        return {
+          ...current,
+          [componentKey]: { ...existing, sourceInputs: savedInputs },
+        };
       });
       qc.invalidateQueries({ queryKey: ['theme-components', theme] });
       toast.show(`Saved inputs for "${component.name}".`, { tone: 'success' });
@@ -187,4 +208,8 @@ function componentIdFromPath(path) {
 
 function normalizeTemplatePath(path) {
   return String(path || '').replace(/^\/+/, '');
+}
+
+function inputsEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
