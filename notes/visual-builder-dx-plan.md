@@ -16,7 +16,7 @@ contract; migrate the 12 kit components. Then Phase 2 (inserter) uses it.
 instead of hand-written JSON, in **two surfaces**:
 - pattern dialog (`PatternFormDialog.jsx`)
 - Theme Builder **sidebar → Fields tab** (`ThemeBuilderFieldsPanel.jsx`),
-  editing the open component's inputs inline + a **Copy/Insert Tag snippet**
+  editing the open component's inputs inline + a **Copy-only Tag snippet**
   built from current defaults (early slice of Phase 2's inserter).
 
 Shared plumbing: `ComponentInputRow.jsx` (schema-matched row),
