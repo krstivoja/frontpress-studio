@@ -84,6 +84,12 @@ if (!function_exists('partial')) {
                     file_put_contents($cacheFile, \FrontPress\ComponentTagProcessor::processPhp(file_get_contents($path)));
                 }
                 extract($vars, EXTR_SKIP);
+                // Mirror the globals Twig registers (see TemplateRenderer) so
+                // PHP partials can reference $config / $query the same way.
+                // $config is the Config object here — partials call
+                // $config->get() — whereas Twig receives the flattened array.
+                // Extracted after $vars with EXTR_SKIP so per-partial vars win.
+                extract(['config' => $GLOBALS['fp_config'] ?? null, 'query' => $_GET], EXTR_SKIP);
                 require $cacheFile;
             }
             if ($preview) {

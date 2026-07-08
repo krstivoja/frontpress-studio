@@ -91,6 +91,20 @@ class PathResolverTest extends TestCase
         $this->assertNull($this->paths->resolveNewContentFile(''));
     }
 
+    /**
+     * Regression: an empty slug makes the editor send just the folder
+     * ("pages") as the target. Writing content/pages.md there would shadow the
+     * content/pages/ folder and, on delete, take the whole folder to trash.
+     * The target must be rejected when it collapses onto an existing directory.
+     */
+    public function testResolveNewContentFileRejectsExistingDirectory(): void
+    {
+        // `blog/` already exists from setUp() — a target of just "blog" collapses onto it.
+        $this->assertNull($this->paths->resolveNewContentFile('blog'));
+        // A real new page inside the folder is still allowed.
+        $this->assertNotNull($this->paths->resolveNewContentFile('blog/real-post'));
+    }
+
     public function testThemeTemplateResolvesExisting(): void
     {
         $this->assertSame(

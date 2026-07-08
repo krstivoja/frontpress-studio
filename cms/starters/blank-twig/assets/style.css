@@ -53,6 +53,7 @@ h1, h2, h3 { line-height: 1.25; }
 h1 { font-size: 2rem; }
 h2 { font-size: 1.5rem; margin-top: 2rem; }
 h3 { font-size: 1.125rem; margin-top: 1.5rem; }
+.page-title { font-size: 5rem; }
 p, ul, ol, blockquote { margin-block: 0.75rem; }
 ul, ol { padding-left: 1.25rem; }
 blockquote { border-left: 3px solid var(--color-rule); padding-left: 1rem; color: var(--color-muted); }

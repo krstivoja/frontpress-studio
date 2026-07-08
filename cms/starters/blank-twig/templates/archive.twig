@@ -2,7 +2,7 @@
 {% set page_title = (folder|default('Blog'))|capitalize %}
 
 {% block content %}
-<h1 style="font-size: 5rem;">{{ folder|default('Blog')|capitalize }}</h1>
+<h1 class="page-title">{{ folder|default('Blog')|capitalize }}</h1>
 
 {% if intro and intro.html %}<div>{{ intro.html|raw }}</div>{% endif %}
 

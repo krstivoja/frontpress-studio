@@ -53,6 +53,7 @@ h1, h2, h3 { line-height: 1.25; }
 h1 { font-size: 2rem; }
 h2 { font-size: 1.5rem; margin-top: 2rem; }
 h3 { font-size: 1.125rem; margin-top: 1.5rem; }
+.page-title { font-size: 5rem; }
 p, ul, ol, blockquote { margin-block: 0.75rem; }
 ul, ol { padding-left: 1.25rem; }
 blockquote { border-left: 3px solid var(--color-rule); padding-left: 1rem; color: var(--color-muted); }
@@ -91,3 +92,51 @@ figcaption { text-align: center; font-size: 0.875rem; color: var(--color-muted);
 
 .post-featured { margin-block: 1.5rem; }
 .post-featured img { margin: 0; }
+
+/* --- contact form (rendered by `contact_form()` Twig helper) ---
+   Minimal styling for the bundled contact template. Themes that want
+   something fancier can replace the `.fp-form*` rules or stop using the
+   helper and roll their own markup against the same /submit/<form>
+   endpoint. */
+.fp-form { display: grid; gap: 1rem; max-width: 36rem; }
+.fp-form__row { display: grid; gap: 0.25rem; font-size: 0.875rem; }
+.fp-form__row span { font-weight: 500; color: var(--color-fg); }
+.fp-form__row input,
+.fp-form__row textarea,
+.fp-form__row select {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--color-fg);
+}
+.fp-form__row input:focus,
+.fp-form__row textarea:focus,
+.fp-form__row select:focus {
+  outline: 2px solid #0a58ca;
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.fp-form__row textarea { min-height: 8rem; resize: vertical; }
+.fp-form__cb { display: flex; gap: 0.5rem; align-items: center; font-size: 0.875rem; }
+.fp-form button[type="submit"] {
+  align-self: start;
+  padding: 0.5rem 1.25rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-fg);
+  color: var(--color-bg);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.fp-form button[type="submit"]:hover { background: #000; }
+.fp-form__status {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+.fp-form__status--ok  { background: #ecfdf5; color: #065f46; border: 1px solid #6ee7b7; }
+.fp-form__status--err { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }

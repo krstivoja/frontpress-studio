@@ -3,7 +3,7 @@ $folderLabel = ucfirst($folder ?? 'Blog');
 partial('header', ['page_title' => $folderLabel]);
 ?>
 
-<h1><?= e($folderLabel) ?></h1>
+<h1 class="page-title"><?= e($folderLabel) ?></h1>
 
 <?php if (!empty($intro['html'])): ?>
   <div><?= $intro['html'] ?></div>

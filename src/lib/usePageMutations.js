@@ -79,7 +79,15 @@ export function usePageMutations({
       const body = editorMode === 'html'
         ? (htmlValue || '')
         : (edRef.current?.getMarkdown?.() ?? '');
-      const relPath = [folder, slug].filter(Boolean).join('/');
+      // Slug is required. An empty slug collapses the target to the folder
+      // itself (`[folder, ''].filter(Boolean)` → just `folder`), which the
+      // backend would write as `pages.md` beside the `pages/` folder — and
+      // deleting that page then trashes the whole folder. Refuse to save.
+      const cleanSlug = (slug || '').trim().replace(/^\/+|\/+$/g, '');
+      if (!cleanSlug) {
+        throw new Error('Slug is required.');
+      }
+      const relPath = [folder, cleanSlug].filter(Boolean).join('/');
       // `path` is the *target* — for an update it doubles as the rename
       // request when it differs from the URL path; for a create it's the
       // location to write to.
@@ -106,6 +114,7 @@ export function usePageMutations({
         navigate(`/${encodeURIComponent(folder)}/${encodePath(rest)}`, { replace: true });
       }
     },
+    onError: (err) => toast.show(err.message || "Couldn't save.", { tone: 'error' }),
   });
 
   // Cmd/Ctrl+S — save without leaving the keyboard. `save.isPending` guards
