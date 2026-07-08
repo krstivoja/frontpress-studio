@@ -16,6 +16,7 @@
     "emmet-monaco-es": "^5.7.0",
     "js-beautify": "^1.15.4",
     "js-cookie": "^3.0.7",
+    "prosemirror-history": "^1.5.0",
     "react": "^18.3.1",
     "react-day-picker": "^10.0.1",
     "react-dom": "^18.3.1",
