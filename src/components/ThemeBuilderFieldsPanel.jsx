@@ -37,13 +37,28 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     },
     [data, selectedTemplate, compId],
   );
+  const draftComponent = useMemo(
+    () => compId ? {
+      id:          compId,
+      name:        labelFromId(compId),
+      template:    selectedTemplate,
+      description: '',
+      category:    'content',
+      inputs:      [],
+      examples:    [],
+      sample:      {},
+    } : null,
+    [compId, selectedTemplate],
+  );
+  const activeComponent = component || draftComponent;
+  const hasManifest = !!component;
 
-  const componentKey = component
-    ? `${component.id}\n${normalizeTemplatePath(component.template)}`
+  const componentKey = activeComponent
+    ? `${hasManifest ? 'manifest' : 'draft'}\n${activeComponent.id}\n${normalizeTemplatePath(activeComponent.template)}`
     : null;
   const componentInputs = useMemo(
-    () => (Array.isArray(component?.inputs) ? component.inputs : []),
-    [component],
+    () => (Array.isArray(activeComponent?.inputs) ? activeComponent.inputs : []),
+    [activeComponent],
   );
   const [editors, setEditors] = useState({});
   useEffect(() => {
@@ -81,8 +96,10 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
   };
 
   const [busy, setBusy] = useState(false);
-  const dirty = component
+  const dirty = activeComponent
     && JSON.stringify(inputs) !== JSON.stringify(sourceInputs);
+  const canSave = dirty && !busy && (hasManifest || (inputs || []).length > 0);
+  const saveLabel = hasManifest ? 'Save inputs' : 'Create fields';
 
   if (!compId) {
     return (
@@ -93,19 +110,11 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     );
   }
 
-  if (!component) {
-    return (
-      <div className="rounded-md border border-dashed border-zinc-200 p-3 text-[11px] text-zinc-500">
-        <p className="font-mono text-zinc-700">{compId}</p>
-        <p className="mt-1">No manifest yet. Add one from the Patterns dialog, then edit its inputs here.</p>
-      </div>
-    );
-  }
-
   async function save() {
     // Send the FULL manifest so update()'s forWrite doesn't reset name /
     // category / examples — only inputs changed, but forWrite rebuilds
     // from whatever we pass.
+    if (!activeComponent) return;
     const inputError = validateComponentInputs(inputs);
     if (inputError) {
       toast.show(inputError, { tone: 'error', duration: 5000 });
@@ -115,11 +124,12 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     try {
       const savedDraft  = inputs;
       const savedInputs = normalizeComponentInputs(inputs);
-      await api.post('/themes/components-update', {
+      const payload = {
         theme:     theme || undefined,
-        id:        component.id,
-        component: { ...component, inputs: savedInputs },
-      });
+        component: { ...activeComponent, inputs: savedInputs },
+      };
+      if (hasManifest) payload.id = activeComponent.id;
+      await api.post(hasManifest ? '/themes/components-update' : '/themes/components-add', payload);
       setEditors((current) => {
         const existing = current[componentKey];
         if (!existing) return current;
@@ -138,7 +148,12 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
         };
       });
       qc.invalidateQueries({ queryKey: ['theme-components', theme] });
-      toast.show(`Saved inputs for "${component.name}".`, { tone: 'success' });
+      toast.show(
+        hasManifest
+          ? `Saved inputs for "${activeComponent.name}".`
+          : `Created fields for "${activeComponent.name}".`,
+        { tone: 'success' },
+      );
     } catch (e) {
       toast.show(e.message, { tone: 'error', duration: 5000 });
     } finally {
@@ -146,7 +161,7 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     }
   }
 
-  const snippet = buildComponentSnippet(component, inputs, selectedPath);
+  const snippet = buildComponentSnippet(activeComponent, inputs, selectedPath);
 
   async function copyTag() {
     const inputError = validateComponentInputs(inputs);
@@ -165,17 +180,24 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-[13px] font-semibold text-zinc-900">{component.name}</p>
-        <p className="font-mono text-[11px] text-zinc-500">{component.id}</p>
+        <p className="text-[13px] font-semibold text-zinc-900">{activeComponent.name}</p>
+        <p className="font-mono text-[11px] text-zinc-500">{activeComponent.id}</p>
+        {!hasManifest && (
+          <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+            No manifest yet. Add inputs below and save to create the sidecar fields file.
+          </p>
+        )}
       </div>
 
       <ComponentInputsEditor inputs={inputs} onChange={setInputs} />
 
-      <div className="flex items-center gap-2">
-        <Button size="sm" onClick={save} disabled={!dirty || busy}>
-          {busy ? 'Saving…' : dirty ? 'Save inputs' : 'Saved'}
-        </Button>
-      </div>
+      {canSave && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={save}>
+            {saveLabel}
+          </Button>
+        </div>
+      )}
 
       {/* Copy-paste snippet built from the current defaults — paste into a
           template or content file. */}
@@ -212,6 +234,14 @@ function componentIdFromPath(path) {
 
 function normalizeTemplatePath(path) {
   return String(path || '').replace(/^\/+/, '');
+}
+
+function labelFromId(id) {
+  return String(id || '')
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ') || 'Component';
 }
 
 function inputsEqual(a, b) {
