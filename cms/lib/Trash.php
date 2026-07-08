@@ -61,9 +61,13 @@ class Trash
             return null;
         }
 
-        // Move sibling per-post uploads dir if present.
+        // Move sibling per-post uploads dir if present. Guard against a
+        // directory that actually holds pages (a content folder, e.g. after a
+        // bad empty-slug save left `pages.md` beside `pages/`): moving it would
+        // silently trash every child page. Only sweep dirs with no markdown
+        // children — a genuine uploads dir holds images, not `.md` files.
         $srcAssets = $this->contentDir . '/' . $relPath;
-        if (is_dir($srcAssets)) {
+        if (is_dir($srcAssets) && !self::hasMarkdown($srcAssets)) {
             @rename($srcAssets, $entryDir . '/' . $slug);
         }
 
@@ -73,6 +77,22 @@ class Trash
         ]));
 
         return $token;
+    }
+
+    /** True if $dir contains any `.md` file at any depth — i.e. it's a content
+     *  folder, not a page's uploads dir. Bails on the first match. */
+    private static function hasMarkdown(string $dir): bool
+    {
+        foreach (scandir($dir) ?: [] as $name) {
+            if ($name === '.' || $name === '..') continue;
+            $path = $dir . '/' . $name;
+            if (is_dir($path)) {
+                if (self::hasMarkdown($path)) return true;
+            } elseif (str_ends_with($name, '.md')) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -177,6 +177,11 @@ function render(string $template, array $vars = []): void
     ob_start();
     if (is_file($php)) {
         extract($vars, EXTR_SKIP);
+        // Mirror the globals Twig registers (see TemplateRenderer) so PHP
+        // templates can reference $config / $query the same way. $config is
+        // the Config object — templates call $config->get(); Twig receives the
+        // flattened array. Extracted after $vars with EXTR_SKIP so vars win.
+        extract(['config' => $GLOBALS['fp_config'] ?? null, 'query' => $_GET], EXTR_SKIP);
         require $php;
     } else {
         FrontPress\TemplateRenderer::instance()->render("$template.twig", $vars);

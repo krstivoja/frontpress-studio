@@ -3,7 +3,7 @@
 
 {% block content %}
 <article>
-  <h1 style="font-size:5rem;">{{ meta.title|default('') }}</h1>
+  <h1 class="page-title">{{ meta.title|default('') }}</h1>
   {{ html|raw }}
 </article>
 {% endblock %}

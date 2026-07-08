@@ -64,7 +64,12 @@ export default function PageEditorSidebar({
             </a>
           )}
 
-          <Button onClick={() => save.mutate()} disabled={save.isPending} className="grow-1">
+          <Button
+            onClick={() => save.mutate()}
+            disabled={save.isPending || !(slug || '').trim()}
+            title={!(slug || '').trim() ? 'Slug is required' : undefined}
+            className="grow-1"
+          >
             {save.isPending ? 'Saving…' : 'Save'}
           </Button>
         </div>
@@ -75,7 +80,11 @@ export default function PageEditorSidebar({
               segment) so the user edits the same field they did at create
               time. The save mutation sends the rebuilt `folder/slug` as the
               target `path` and the backend renames the file when it differs. */}
-          <div className="flex h-9 w-full overflow-hidden rounded-md border border-zinc-200 bg-white transition-colors focus-within:border-zinc-900 focus-within:ring-2 focus-within:ring-zinc-900/15">
+          <div className={`flex h-9 w-full overflow-hidden rounded-md border bg-white transition-colors focus-within:ring-2 ${
+            (slug || '').trim()
+              ? 'border-zinc-200 focus-within:border-zinc-900 focus-within:ring-zinc-900/15'
+              : 'border-red-400 focus-within:border-red-500 focus-within:ring-red-500/15'
+          }`}>
             <span className="inline-flex select-none items-center border-r border-zinc-200 bg-zinc-50 px-2 font-mono text-xs text-zinc-500">
               {folder}/
             </span>
@@ -86,14 +95,17 @@ export default function PageEditorSidebar({
                 markDirty(setSlug)(e.target.value.toLowerCase().replace(/[^a-z0-9/-]/g, ''));
               }}
               placeholder="my-post"
+              aria-invalid={!(slug || '').trim()}
               className="min-w-0 flex-1 border-0 bg-transparent px-2 font-mono text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0"
             />
           </div>
-          {!isNew && (
+          {!(slug || '').trim() ? (
+            <p className="mt-1 text-[11px] text-red-600">Slug is required.</p>
+          ) : !isNew ? (
             <p className="mt-1 text-[11px] text-zinc-500">
               Editing the slug renames the file and changes the URL.
             </p>
-          )}
+          ) : null}
         </Field>
 
         <FeaturedImageField

@@ -55,6 +55,29 @@ class TrashTest extends TestCase
         $this->assertFileExists($this->cacheDir . '/trash/' . $token . '/hello/cover.jpg');
     }
 
+    /**
+     * Regression: a bad empty-slug save can leave a stray `pages.md` beside the
+     * `pages/` content folder. Deleting that page must NOT sweep the folder —
+     * the sibling dir holds other pages, not the page's uploads. It should move
+     * only the stray `.md` and leave every child page on disk.
+     */
+    public function testMoveDoesNotSweepSiblingContentFolder(): void
+    {
+        mkdir($this->contentDir . '/pages', 0755, true);
+        file_put_contents($this->contentDir . '/pages/about.md', "---\ntitle: About\n---\n");
+        file_put_contents($this->contentDir . '/pages/contact.md', "---\ntitle: Contact\n---\n");
+        file_put_contents($this->contentDir . '/pages.md', "---\ntitle: Stray\n---\n");
+
+        $token = $this->trash->move('pages');
+
+        $this->assertNotNull($token);
+        $this->assertFileDoesNotExist($this->contentDir . '/pages.md');
+        // The content folder and its children must survive.
+        $this->assertDirectoryExists($this->contentDir . '/pages');
+        $this->assertFileExists($this->contentDir . '/pages/about.md');
+        $this->assertFileExists($this->contentDir . '/pages/contact.md');
+    }
+
     public function testRestoreReversesTheMove(): void
     {
         $token = $this->trash->move('blog/hello');

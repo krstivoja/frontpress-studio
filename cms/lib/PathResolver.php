@@ -55,6 +55,15 @@ class PathResolver
             return null;
         }
 
+        // Refuse a target that collapses onto an existing directory. An empty
+        // slug makes the editor send just the folder ("pages") as the target;
+        // writing content/pages.md there would shadow the content/pages/ folder
+        // and, on delete, Trash::move would take the whole folder to trash
+        // (it treats the sibling dir as the page's uploads). See PagesController.
+        if (is_dir($this->contentDir . '/' . $relPath)) {
+            return null;
+        }
+
         $target = $this->contentDir . '/' . $relPath . '.md';
         $dir    = dirname($target);
         while (!is_dir($dir) && strlen($dir) > strlen($this->contentDir)) {
