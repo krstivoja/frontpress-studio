@@ -25,10 +25,28 @@ if (!function_exists('asset_url')) {
     /**
      * URL for a file under the active theme's `assets/` directory. The active
      * theme's assets are symlinked into the webroot as `assets/` by ThemeService.
+     *
+     * Stylesheets and scripts get an `?v=<mtime>` cache-bust so a new build is a
+     * new URL — browsers and CDNs (e.g. Cloudflare) can't serve a stale copy of
+     * `style.css` after a deploy. Only `.css`/`.js` are fingerprinted: fonts and
+     * images are referenced by relative `url()` inside CSS *without* a version,
+     * so a mismatched query would break preload reuse and double-fetch them.
      */
     function asset_url(string $path): string
     {
-        return '/assets/' . ltrim($path, '/');
+        $path = ltrim($path, '/');
+        $url  = '/assets/' . $path;
+
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (($ext === 'css' || $ext === 'js') && isset($GLOBALS['fp_template_dir'])) {
+            $file  = dirname((string)$GLOBALS['fp_template_dir']) . '/assets/' . $path;
+            $mtime = @filemtime($file);
+            if ($mtime !== false) {
+                $url .= '?v=' . $mtime;
+            }
+        }
+
+        return $url;
     }
 }
 
