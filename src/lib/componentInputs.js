@@ -5,7 +5,7 @@ export function validateComponentInputs(inputs) {
   for (const input of inputs || []) {
     const name = String(input?.name || '');
     if (!INPUT_NAME_RE.test(name)) {
-      return `Input name "${name}" is invalid - use letters, digits, underscore; no leading digit.`;
+      return `Input name "${name}" must use letters, digits, or underscores, and can’t start with a digit.`;
     }
     if (seen.has(name)) {
       return `Input name "${name}" is duplicated.`;

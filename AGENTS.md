@@ -21,4 +21,12 @@ adopted:
 If a split would obscure something cohesive, mention it in the PR description
 rather than silently shipping a 400-line file.
 
+## Admin copy
+
+Every user-facing string in the admin is product copy and must follow the
+voice & tone contract in [`docs/voice-and-tone.md`](docs/voice-and-tone.md):
+sentence case, terse, no jargon, describe-then-propose errors, and no
+system-centric or punitive words (`error`, `failed`, `invalid`, …) in copy.
+When you add or change an admin string, check it against that doc.
+
 #### test

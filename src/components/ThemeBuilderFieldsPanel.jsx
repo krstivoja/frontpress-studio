@@ -173,7 +173,7 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
       await navigator.clipboard.writeText(snippet);
       toast.show('Tag copied to clipboard.', { tone: 'success' });
     } catch {
-      toast.show('Copy failed — select and copy manually.', { tone: 'error' });
+      toast.show('Couldn’t copy automatically — select and copy manually.', { tone: 'error' });
     }
   }
 
