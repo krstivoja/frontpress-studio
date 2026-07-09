@@ -98,6 +98,97 @@ class ComponentTagProcessorTest extends TestCase
         $this->assertSame(['label' => 'cta_label', 'variant' => 'primary'], $captured[1]);
     }
 
+    // --- paired tags / children slot --------------------------------------
+
+    public function testTwigPairedCapturesChildren(): void
+    {
+        $out = ComponentTagProcessor::processTwig('<Button variant="primary">Save</Button>');
+        $this->assertSame(
+            "{% set _fpc0 %}Save{% endset %}{{ component('button', {'variant': 'primary', 'children': _fpc0}) }}",
+            $out
+        );
+    }
+
+    public function testPhpPairedCapturesChildren(): void
+    {
+        $out = ComponentTagProcessor::processPhp('<Button variant="primary">Save</Button>');
+        $this->assertSame(
+            "<?php ob_start(); ?>Save<?php \$__fpc0 = ob_get_clean(); "
+            . "component('button', ['variant' => 'primary', 'children' => \$__fpc0]); ?>",
+            $out
+        );
+    }
+
+    public function testTwigPairedWithNoAttrs(): void
+    {
+        $out = ComponentTagProcessor::processTwig('<Card>hi</Card>');
+        $this->assertSame(
+            "{% set _fpc0 %}hi{% endset %}{{ component('card', {'children': _fpc0}) }}",
+            $out
+        );
+    }
+
+    public function testTwigNestedSelfClosingInsidePairIsConvertedFirst(): void
+    {
+        $out = ComponentTagProcessor::processTwig('<Button variant="primary"><Icon name="star" /> Save</Button>');
+        $this->assertSame(
+            "{% set _fpc0 %}{{ component('icon', {'name': 'star'}) }} Save{% endset %}"
+            . "{{ component('button', {'variant': 'primary', 'children': _fpc0}) }}",
+            $out
+        );
+    }
+
+    public function testTwigNestedPairedTagsResolveInnermostFirst(): void
+    {
+        // Card wraps a Button that wraps its own text; both get their own slot.
+        $out = ComponentTagProcessor::processTwig('<Card><Button>x</Button></Card>');
+        $this->assertSame(
+            "{% set _fpc1 %}{% set _fpc0 %}x{% endset %}"
+            . "{{ component('button', {'children': _fpc0}) }}{% endset %}"
+            . "{{ component('card', {'children': _fpc1}) }}",
+            $out
+        );
+    }
+
+    public function testPhpNestedSelfClosingInsidePair(): void
+    {
+        $out = ComponentTagProcessor::processPhp('<Button><Icon name="star" /></Button>');
+        $this->assertSame(
+            "<?php ob_start(); ?><?php component('icon', ['name' => 'star']); ?>"
+            . "<?php \$__fpc0 = ob_get_clean(); component('button', ['children' => \$__fpc0]); ?>",
+            $out
+        );
+    }
+
+    public function testPairedExpressionAttrPassesThrough(): void
+    {
+        $out = ComponentTagProcessor::processTwig('<Button href={url}>Go</Button>');
+        $this->assertSame(
+            "{% set _fpc0 %}Go{% endset %}{{ component('button', {'href': (url), 'children': _fpc0}) }}",
+            $out
+        );
+    }
+
+    public function testMarkdownPairedPassesRenderedChildren(): void
+    {
+        $out = ComponentTagProcessor::processMarkdown(
+            '<Button variant="primary"><Icon name="star" /> Save</Button>',
+            function (string $name, array $attrs): string {
+                if ($name === 'icon') {
+                    return '[icon:' . $attrs['name'] . ']';
+                }
+                return '<button>' . ($attrs['children'] ?? '') . '</button>';
+            }
+        );
+        $this->assertSame('<button>[icon:star] Save</button>', $out);
+    }
+
+    public function testPairedLowercaseTagPassesThrough(): void
+    {
+        $src = '<button>Save</button>';
+        $this->assertSame($src, ComponentTagProcessor::processTwig($src));
+    }
+
     // --- safe fallbacks ----------------------------------------------------
 
     public function testLowercaseTagsPassThroughUntouched(): void

@@ -1,9 +1,12 @@
 {# Button — <Button label="Save" variant="primary" size="md" href="/go" />
-   props: label, variant(primary|secondary|ghost|danger), size(sm|md|lg), href, type #}
+   Also accepts children: <Button variant="primary"><Icon name="star" /> Save</Button>
+   props: label, variant(primary|secondary|ghost|danger), size(sm|md|lg), href, type
+   children: inner content — overrides label when present #}
 {% set variant = variant|default('primary') %}
 {% set size    = size|default('md') %}
+{% set body    = children|default('') ?: label|default('Button') %}
 {% if href|default('') %}
-<a class="ds-btn ds-btn--{{ variant }} ds-btn--{{ size }}" href="{{ href }}">{{ label|default('Button') }}</a>
+<a class="ds-btn ds-btn--{{ variant }} ds-btn--{{ size }}" href="{{ href }}">{{ body }}</a>
 {% else %}
-<button class="ds-btn ds-btn--{{ variant }} ds-btn--{{ size }}" type="{{ type|default('button') }}">{{ label|default('Button') }}</button>
+<button class="ds-btn ds-btn--{{ variant }} ds-btn--{{ size }}" type="{{ type|default('button') }}">{{ body }}</button>
 {% endif %}
