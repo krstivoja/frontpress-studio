@@ -118,6 +118,19 @@ class ScssCompiler
         return ['compiled' => $compiled, 'errors' => $errors];
     }
 
+    /**
+     * Newest mtime anywhere under the theme's `assets/` tree. Used as an
+     * opaque cache-bust token by the logged-in live-CSS-reload poller —
+     * it bumps whenever any source or compiled asset changes, whether the
+     * edit came from disk or an admin save. Returns 0 when there are no
+     * assets.
+     */
+    public function assetsMtime(string $themeDir): int
+    {
+        $assetsDir = $themeDir . '/assets';
+        return is_dir($assetsDir) ? $this->newestMtime($assetsDir) : 0;
+    }
+
     /** Greatest mtime under $dir, recursively. Returns 0 if empty. */
     private function newestMtime(string $dir): int
     {

@@ -70,6 +70,9 @@ class Router
                 case 'cache':
                     CacheController::handle($rest, $method, $config);
                     return;
+                case 'theme-css':
+                    CacheController::cssState($config);
+                    return;
                 case 'audit':
                     AuditController::handle($method, $config);
                     return;

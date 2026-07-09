@@ -71,6 +71,37 @@ class CacheController
         \json_response(['ok' => false, 'error' => 'Unknown cache action'], 404);
     }
 
+    /**
+     * Polling endpoint for the front-end live-CSS-reload script that
+     * `admin_edit_button()` injects for logged-in admins. Recompiles the
+     * active theme's SCSS (mtime-driven — a no-op when nothing changed) so
+     * both disk edits and admin saves get picked up, then returns the
+     * newest asset mtime as an opaque version token. The browser swaps its
+     * stylesheet <link> hrefs whenever the token changes.
+     *
+     * Auth-only, no CSRF: it's an idempotent read gated on the admin
+     * session (a visitor can't reach it), and the public page that polls
+     * it carries no CSRF token to send.
+     *
+     * @param array<string, mixed> $config
+     */
+    public static function cssState(array $config): void
+    {
+        Router::requireAuth();
+
+        $themes   = new ThemeService($config['appRoot'], $config['config']);
+        $themeDir = $config['themesDir'] . '/' . $themes->active();
+        $compiler = new ScssCompiler();
+        $result   = $compiler->compileTheme($themeDir);
+
+        \json_response([
+            'ok'       => true,
+            'v'        => $compiler->assetsMtime($themeDir),
+            'compiled' => $result['compiled'],
+            'errors'   => $result['errors'],
+        ]);
+    }
+
     /** @param array<string, mixed> $config */
     private static function cache(array $config): CacheService
     {

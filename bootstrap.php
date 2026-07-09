@@ -204,8 +204,74 @@ function render(string $template, array $vars = []): void
         $body = inject_seo($body, $template, $vars);
     }
 
+    // Logged-in admins get a live-CSS-reload poller so front-end edits to
+    // the theme's SCSS/CSS hot-swap without a full reload. Gated purely on
+    // the admin session (not admin_edit_path) so it works on every view —
+    // archives, taxonomies — not just single posts/pages.
+    if (!empty($GLOBALS['admin_logged_in'])) {
+        $body = inject_live_css_reload($body);
+    }
+
     echo $body;
     admin_edit_button();
+}
+
+/**
+ * Inject the live-CSS-reload script for logged-in admins. Polls
+ * `/admin/api/theme-css` (recompiles mtime-driven, returns a version
+ * token) and, when the token changes, re-fetches every theme stylesheet
+ * with a fresh cache-bust query — no page reload, so scroll and form
+ * state survive. Returns $body untouched when it has no `</body>` (e.g.
+ * the Atom feed writes XML), so non-HTML responses stay clean.
+ */
+function inject_live_css_reload(string $body): string
+{
+    $pos = stripos($body, '</body>');
+    if ($pos === false) {
+        return $body;
+    }
+    $script = <<<'HTML'
+<script>(function () {
+  // Only theme stylesheets (served from /assets/) are swapped; the admin
+  // edit-button's inline <style> and any third-party links are left alone.
+  var last = null, url = '/admin/api/theme-css', timer = null;
+
+  function swap(v) {
+    var links = document.querySelectorAll('link[rel="stylesheet"]');
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i];
+      var href = link.getAttribute('href') || '';
+      if (href.indexOf('/assets/') === -1) continue;
+      var clean = href.split('?')[0];
+      // Clone so the fresh sheet paints before we drop the stale one —
+      // avoids an unstyled flash mid-swap.
+      var next = link.cloneNode(false);
+      next.setAttribute('href', clean + '?v=' + v);
+      next.addEventListener('load', function () { if (link.parentNode) link.parentNode.removeChild(link); });
+      next.addEventListener('error', function () { if (next.parentNode) next.parentNode.removeChild(next); });
+      link.parentNode.insertBefore(next, link.nextSibling);
+    }
+  }
+
+  function tick() {
+    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) {
+        if (r.status === 401) { clearInterval(timer); return null; } // session gone
+        return r.ok ? r.json() : null;
+      })
+      .then(function (d) {
+        if (!d || typeof d.v === 'undefined') return;
+        if (last === null) { last = d.v; return; } // first tick: baseline only
+        if (d.v !== last) { last = d.v; swap(d.v); }
+      })
+      .catch(function () {});
+  }
+
+  timer = setInterval(tick, 1000);
+  tick();
+})();</script>
+HTML;
+    return substr($body, 0, $pos) . $script . substr($body, $pos);
 }
 
 /**
