@@ -1,6 +1,7 @@
 <?php
 
 defined('FRONTPRESS_BOOT') || exit;
+require_once __DIR__ . '/template_partial_helpers.php';
 /**
  * Template helpers — usable from PHP and Twig templates.
  *
@@ -17,108 +18,6 @@ if (!function_exists('e')) {
     {
         if ($value === null || $value === false) return '';
         return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-    }
-}
-
-if (!function_exists('partial')) {
-    /**
-     * Render a partial from the active theme. Resolution order:
-     *   1. components/<name>.php
-     *   2. components/<name>.twig
-     *   3. components/<name>.html
-     *   4. _<name>.php          (legacy convention)
-     *   5. <name>.php           (legacy convention)
-     *   6. _<name>.twig         (legacy convention)
-     *   7. <name>.twig          (legacy convention)
-     *   8. _<name>.html
-     *   9. <name>.html
-     *
-     * `.twig` partials are routed through `FrontPress\TemplateRenderer`. PHP
-     * partials are required directly with `$vars` extracted into local scope.
-     * `.html` partials are emitted verbatim — they carry no template logic,
-     * so `$vars` are ignored. Use `.twig` when you need dynamic content.
-     *
-     * @param array<string, mixed> $vars
-     */
-    function partial(string $name, array $vars = []): void
-    {
-        // Reject anything that isn't a plain partial name. Slashes are allowed
-        // for nested partials (e.g. "blocks/hero") but `..`, leading slashes,
-        // and any non-alphanumeric segment characters are rejected to prevent
-        // path traversal into the wider filesystem.
-        if (!preg_match('#^[a-z0-9][a-z0-9_/-]*$#i', $name) || str_contains($name, '..')) {
-            throw new RuntimeException("Invalid partial name: $name");
-        }
-        $dir = $GLOBALS['fp_template_dir'];
-        $candidates = [
-            ["components/{$name}.php",  'php'],
-            ["components/{$name}.twig", 'twig'],
-            ["components/{$name}.html", 'html'],
-            ["_{$name}.php",            'php'],
-            ["{$name}.php",             'php'],
-            ["_{$name}.twig",           'twig'],
-            ["{$name}.twig",            'twig'],
-            ["_{$name}.html",           'html'],
-            ["{$name}.html",            'html'],
-        ];
-        foreach ($candidates as [$rel, $kind]) {
-            $path = "$dir/$rel";
-            if (!is_file($path)) continue;
-            $preview = !empty($GLOBALS['fp_template_preview']);
-            // Wrap the partial's output with HTML-comment markers in
-            // preview mode so the iframe click handler can attribute
-            // clicks back to the source file via DOM walk.
-            if ($preview) {
-                $tplPath = "templates/" . htmlspecialchars($rel, ENT_QUOTES);
-                echo "<!--fp:src:{$tplPath}:start-->";
-            }
-            if ($kind === 'twig') {
-                FrontPress\TemplateRenderer::instance()->render($rel, $vars);
-            } elseif ($kind === 'html') {
-                readfile($path);
-            } else {
-                $cacheDir  = ($GLOBALS['fp_cache_dir'] ?? sys_get_temp_dir()) . '/components';
-                $cacheFile = $cacheDir . '/' . md5($path) . '.php';
-                if (!is_file($cacheFile) || filemtime($path) > filemtime($cacheFile)) {
-                    @mkdir($cacheDir, 0755, true);
-                    file_put_contents($cacheFile, \FrontPress\ComponentTagProcessor::processPhp(file_get_contents($path)));
-                }
-                extract($vars, EXTR_SKIP);
-                // Mirror the globals Twig registers (see TemplateRenderer) so
-                // PHP partials can reference $config / $query the same way.
-                // $config is the Config object here — partials call
-                // $config->get() — whereas Twig receives the flattened array.
-                // Extracted after $vars with EXTR_SKIP so per-partial vars win.
-                extract(['config' => $GLOBALS['fp_config'] ?? null, 'query' => $_GET], EXTR_SKIP);
-                require $cacheFile;
-            }
-            if ($preview) {
-                $tplPath = "templates/" . htmlspecialchars($rel, ENT_QUOTES);
-                echo "<!--fp:src:{$tplPath}:end-->";
-            }
-            return;
-        }
-        throw new RuntimeException("Partial not found: $name");
-    }
-}
-
-if (!function_exists('component')) {
-    /**
-     * Render a reusable component from the active theme's `components/` directory.
-     * Resolves `components/<name>.php`, `components/<name>.twig`, or
-     * `components/<name>.html` — same engine rules as `partial()`.
-     *
-     * Slot defaults live in the component template via Twig's `|default()` filter.
-     * Per-page values come from `meta.components.<name>` in front-matter and are
-     * passed as `$vars` by the caller:
-     *
-     *   {{ component('hero', meta.components.hero ?? {}) }}
-     *
-     * @param array<string, mixed> $vars
-     */
-    function component(string $name, array $vars = []): void
-    {
-        partial('components/' . $name, $vars);
     }
 }
 

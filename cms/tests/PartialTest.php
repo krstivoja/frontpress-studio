@@ -16,6 +16,8 @@ class PartialTest extends TestCase
 {
     private string $themeDir;
     private ?string $prevTemplateDir = null;
+    private bool $hadPreview = false;
+    private mixed $prevPreview = null;
 
     protected function setUp(): void
     {
@@ -23,6 +25,9 @@ class PartialTest extends TestCase
         mkdir($this->themeDir, 0755, true);
         $this->prevTemplateDir = $GLOBALS['fp_template_dir'] ?? null;
         $GLOBALS['fp_template_dir'] = $this->themeDir;
+        $this->hadPreview = array_key_exists('fp_template_preview', $GLOBALS);
+        $this->prevPreview = $GLOBALS['fp_template_preview'] ?? null;
+        unset($GLOBALS['fp_template_preview']);
     }
 
     protected function tearDown(): void
@@ -32,6 +37,11 @@ class PartialTest extends TestCase
             unset($GLOBALS['fp_template_dir']);
         } else {
             $GLOBALS['fp_template_dir'] = $this->prevTemplateDir;
+        }
+        if ($this->hadPreview) {
+            $GLOBALS['fp_template_preview'] = $this->prevPreview;
+        } else {
+            unset($GLOBALS['fp_template_preview']);
         }
     }
 
@@ -72,10 +82,33 @@ class PartialTest extends TestCase
         $this->assertSame('<div>Component</div>', $output);
     }
 
+    public function testComponentResolvesComponentDirectory(): void
+    {
+        mkdir($this->themeDir . '/components', 0755, true);
+        file_put_contents($this->themeDir . '/components/button.html', '<a>Button</a>');
+
+        $output = $this->capture(fn () => component('button'));
+        $this->assertSame('<a>Button</a>', $output);
+    }
+
     public function testRejectsTraversal(): void
     {
         $this->expectException(RuntimeException::class);
         partial('../etc/passwd');
+    }
+
+    public function testMissingComponentIsSilentOutsidePreview(): void
+    {
+        $output = $this->capture(fn () => component('missing'));
+        $this->assertSame('', $output);
+    }
+
+    public function testMissingComponentShowsInlineWarningInPreview(): void
+    {
+        $GLOBALS['fp_template_preview'] = true;
+        $output = $this->capture(fn () => component('missing'));
+        $this->assertStringContainsString('Missing component: missing', $output);
+        $this->assertStringContainsString('fp-missing-component', $output);
     }
 
     private function capture(callable $fn): string
