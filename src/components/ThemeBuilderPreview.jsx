@@ -20,6 +20,8 @@ export default function ThemeBuilderPreview({
   blocks,
   filePath,
   onPathChange,
+  onDuplicate,
+  onDelete,
 }) {
   const [draft, setDraft] = useState(path || '/');
   const iframeRef = useRef(null);
@@ -85,8 +87,28 @@ export default function ThemeBuilderPreview({
           />
         </form>
         {selectedBlock && (
-          <div className="max-w-[40%] truncate rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-600">
-            {selectedBlock.label} / line {selectedBlock.startLine}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <div className="max-w-[200px] truncate rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-600">
+              {selectedBlock.label} / line {selectedBlock.startLine}
+            </div>
+            {onDuplicate && (
+              <button
+                type="button"
+                onClick={onDuplicate}
+                className="rounded px-1.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+              >
+                Duplicate
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded px-1.5 py-1 text-xs font-medium text-zinc-600 hover:bg-red-50 hover:text-red-600"
+              >
+                Delete
+              </button>
+            )}
           </div>
         )}
       </div>

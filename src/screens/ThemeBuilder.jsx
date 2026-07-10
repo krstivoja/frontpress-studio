@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api.js';
 import {
+  deleteBlock,
+  duplicateBlock,
   findBlock,
-  findElementByTag,
+  moveBlock,
   parseThemeBlocks,
 } from '../lib/themeBuilderBlocks.js';
+import { useThemePreviewBridge } from '../lib/useThemePreviewBridge.js';
 import {
   insertSnippet,
   SNIPPETS as BUILTIN_SNIPPETS,
@@ -114,7 +117,15 @@ export default function ThemeBuilder() {
   }, [selectedBlockId, selectedBlock]);
 
   const save = useMutation({
-    mutationFn: () => api.post('/themes/file', { theme, path, content: draft }),
+    // `content` lets canvas/duplicate actions persist the freshly-rewritten
+    // source directly (state updates are async, so we can't rely on `draft`
+    // being current in the same tick). Plain saves call `save.mutate()` with
+    // no arg and fall back to the current draft.
+    mutationFn: (content) => api.post('/themes/file', {
+      theme,
+      path,
+      content: typeof content === 'string' ? content : draft,
+    }),
     onSuccess: () => {
       setDirty(false);
       setPreviewKey(Date.now());
@@ -147,45 +158,43 @@ export default function ThemeBuilder() {
     if (next) setPreviewPath(next);
   }, [path]);
 
-  // Iframe → parent click bridge. The public-side preview script sends
-  // `{ type: 'fp:select', path, tag, occurrence }` when the user clicks
-  // anything in the rendered preview. If the path matches an editable
-  // file in the current theme, switch to it and remember the tag +
-  // occurrence so we can resolve to a specific source block once the
-  // draft for that file has loaded.
-  const [pendingSelection, setPendingSelection] = useState(null);
-  useEffect(() => {
-    function onMessage(e) {
-      const data = e.data;
-      if (!data || data.type !== 'fp:select' || typeof data.path !== 'string') return;
-      if (!files.some((f) => f.path === data.path)) return;
-      const select = { tag: data.tag || null, occurrence: data.occurrence ?? -1 };
-      if (path === data.path) {
-        // Same file already open — resolve the block immediately.
-        const match = findElementByTag(blocks, select.tag, select.occurrence);
-        if (match) setSelectedBlockId(match.id);
-        return;
-      }
-      if (dirty && !confirm('Discard unsaved changes?')) return;
-      setPath(data.path);
-      setDraft('');
-      setDirty(false);
-      setSelectedBlockId('');
-      setPendingSelection(select);
-    }
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, [files, path, dirty, blocks]);
+  // Duplicate / delete a block by source line-range, then persist. Canvas
+  // edits (and their header-button twins) must show up in the server-rendered
+  // preview, so we save immediately and let `onSuccess` bump `previewKey` to
+  // reload the iframe. Selection clears — the block ids regenerate on reparse.
+  function runAction(action, blockId) {
+    if (!blockId) return;
+    const next = action === 'duplicate'
+      ? duplicateBlock(draft, blockId, blocks)
+      : action === 'delete'
+        ? deleteBlock(draft, blockId, blocks)
+        : null;
+    if (next == null || next === draft) return;
+    setDraft(next);
+    setDirty(true); // cleared by save.onSuccess; stays set if the save fails
+    setSelectedBlockId('');
+    save.mutate(next);
+  }
 
-  // After a cross-file click switches files, resolve the queued tag /
-  // occurrence against the freshly-loaded draft's block tree.
-  useEffect(() => {
-    if (!pendingSelection) return;
-    if (!draft) return;
-    const match = findElementByTag(blocks, pendingSelection.tag, pendingSelection.occurrence);
-    if (match) setSelectedBlockId(match.id);
-    setPendingSelection(null);
-  }, [pendingSelection, draft, blocks]);
+  // Canvas drag-to-move: reorder / reparent a block, then persist so the
+  // server-rendered preview reflects it. `moveBlock` no-ops on an invalid
+  // move (self, missing range, or dropping a parent into its own descendant).
+  function runMove(fromId, toId, position) {
+    if (!fromId || !toId || fromId === toId) return;
+    const next = moveBlock(draft, fromId, toId, position, blocks);
+    if (next === draft) return;
+    setDraft(next);
+    setDirty(true);
+    setSelectedBlockId('');
+    save.mutate(next);
+  }
+
+  // Iframe ↔ editor bridge: click-to-select (`fp:select`), the in-canvas
+  // Duplicate/Delete toolbar (`fp:action`), and drag-to-move (`fp:move`).
+  useThemePreviewBridge({
+    files, path, draft, blocks, dirty,
+    setPath, setDraft, setDirty, setSelectedBlockId, runAction, runMove,
+  });
 
   function chooseFile(next) {
     if (path === next) return;
@@ -206,6 +215,10 @@ export default function ThemeBuilder() {
     setDirty(true);
     setSelectedBlockId(selectedId || '');
   }
+
+  // Header-pill twins of the in-canvas toolbar — same apply-and-save path.
+  function duplicateSelected() { runAction('duplicate', selectedBlockId); }
+  function deleteSelected() { runAction('delete', selectedBlockId); }
 
   const isTwig = path.endsWith('.twig');
   const busy = themesLoading || filesLoading || fileLoading;
@@ -255,6 +268,8 @@ export default function ThemeBuilder() {
           onSelectBlock={setSelectedBlockId}
           onChangeDraft={applyBlockChange}
           onSelectFile={chooseFile}
+          onDuplicateBlock={duplicateSelected}
+          onDeleteBlock={deleteSelected}
           onPreviewPathChange={(next) => {
             previewPathTouched.current = true;
             setPreviewPath(next);

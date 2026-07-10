@@ -349,9 +349,211 @@ function inject_preview_script(string $body): string
     }
     return -1;
   }
+  // --- In-canvas selection toolbar (Duplicate / Delete) ---------------
+  // Injected chrome, marked `data-fp-ui` so our own click + hover handlers
+  // skip it. Buttons postMessage the parent, which rewrites the template
+  // source, saves, and reloads this iframe with the rendered result.
+  var fpBar = null, fpSel = null, fpSelPrev = null, fpCur = null;
+  // Block tags that can hold children — mirrors CONTAINER_TAGS in
+  // src/components/ThemeBuilderOutline.jsx so the canvas offers the same
+  // before / after / inside drops as the outline's drag-to-reorder.
+  var CONTAINER_TAGS = {
+    article: 1, aside: 1, div: 1, footer: 1, form: 1, header: 1, main: 1,
+    nav: 1, ol: 1, section: 1, ul: 1, li: 1, figure: 1, blockquote: 1,
+    table: 1, thead: 1, tbody: 1, tfoot: 1, tr: 1
+  };
+  function fpCanContain(el) {
+    return el && el.tagName && !!CONTAINER_TAGS[el.tagName.toLowerCase()];
+  }
+  function fpMkBtn(label, color) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    b.setAttribute('data-fp-ui', '1');
+    b.style.cssText = 'all:unset;box-sizing:border-box;cursor:pointer;padding:4px 8px;'
+      + 'border-radius:4px;color:' + color + ';font:500 12px/1 system-ui,-apple-system,sans-serif;';
+    b.addEventListener('mouseenter', function () { b.style.background = 'rgba(255,255,255,.14)'; });
+    b.addEventListener('mouseleave', function () { b.style.background = 'transparent'; });
+    return b;
+  }
+  function fpEnsureBar() {
+    if (fpBar) return fpBar;
+    fpBar = document.createElement('div');
+    fpBar.setAttribute('data-fp-ui', '1');
+    fpBar.style.cssText = 'position:fixed;z-index:2147483647;display:none;align-items:center;'
+      + 'gap:2px;padding:3px;background:#18181b;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.35);';
+    // Drag grip — press and drag to move the selected element before/after
+    // another element or inside a container. Uses pointer capture so the
+    // drag keeps tracking even over iframes/inputs in the rendered page.
+    var grip = fpMkBtn('⠇', '#a1a1aa');
+    grip.title = 'Drag to move';
+    grip.style.cursor = 'grab';
+    grip.style.padding = '4px 6px';
+    grip.addEventListener('pointerdown', function (e) {
+      if (!fpSel) return;
+      e.preventDefault();
+      e.stopPropagation();
+      fpStartDrag(e, grip);
+    });
+    grip.addEventListener('pointermove', function (e) {
+      if (!fpDragging) return;
+      fpUpdateDrop(e.clientX, e.clientY);
+    });
+    grip.addEventListener('pointerup', function (e) {
+      if (!fpDragging) return;
+      e.preventDefault();
+      e.stopPropagation();
+      fpFinishDrag();
+    });
+    var dup = fpMkBtn('Duplicate', '#e4e4e7');
+    var del = fpMkBtn('Delete', '#fca5a5');
+    dup.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); fpAct('duplicate'); });
+    del.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); fpAct('delete'); });
+    fpBar.appendChild(grip);
+    fpBar.appendChild(dup);
+    fpBar.appendChild(del);
+    (document.body || document.documentElement).appendChild(fpBar);
+    return fpBar;
+  }
+  function fpPosition() {
+    if (!fpCur || !fpSel || !fpBar || fpBar.style.display === 'none') return;
+    var r = fpSel.getBoundingClientRect();
+    var top = r.top - 34;
+    if (top < 4) top = r.top + 4;      // element hugs the top → drop below its edge
+    fpBar.style.top = top + 'px';
+    fpBar.style.left = (r.left < 4 ? 4 : r.left) + 'px';
+  }
+  function fpClearOutline() {
+    if (fpSel && fpSelPrev) {
+      fpSel.style.outline = fpSelPrev.o;
+      fpSel.style.outlineOffset = fpSelPrev.off;
+    }
+    fpSel = null; fpSelPrev = null;
+  }
+  function showBar(el, path, tag, occurrence) {
+    fpEnsureBar();
+    fpClearOutline();
+    fpSel = el;
+    fpSelPrev = { o: el.style.outline, off: el.style.outlineOffset };
+    el.style.outline = '2px solid rgb(59,130,246)';
+    el.style.outlineOffset = '2px';
+    fpCur = { path: path, tag: tag, occurrence: occurrence };
+    fpBar.style.display = 'flex';
+    fpPosition();
+  }
+  function hideBar() {
+    if (fpBar) fpBar.style.display = 'none';
+    fpClearOutline();
+    fpCur = null;
+  }
+  function fpAct(action) {
+    if (!fpCur) return;
+    try {
+      parent.postMessage({
+        type: 'fp:action', action: action,
+        path: fpCur.path, tag: fpCur.tag, occurrence: fpCur.occurrence,
+      }, '*');
+    } catch (_) {}
+    // Parent saves + reloads this iframe on success; drop the toolbar now
+    // so it doesn't linger over a soon-to-be-stale element.
+    hideBar();
+  }
+  // --- Drag-to-move -----------------------------------------------------
+  // Reimplements the outline's before/after/inside reorder on the canvas.
+  // We can't use the parent's drag-and-drop across the iframe boundary, so
+  // we track the drag here and postMessage the parent a `fp:move` with the
+  // source + target (tag, occurrence) and a position; the parent resolves
+  // both to source blocks, rewrites the template, and reloads this iframe.
+  var fpDragging = false, fpDragEl = null, fpDragPath = null;
+  var fpDropTarget = null, fpDropPos = null, fpInd = null;
+  function fpEnsureInd() {
+    if (fpInd) return fpInd;
+    fpInd = document.createElement('div');
+    fpInd.setAttribute('data-fp-ui', '1');
+    fpInd.style.cssText = 'position:fixed;z-index:2147483646;pointer-events:none;display:none;box-sizing:border-box;';
+    (document.body || document.documentElement).appendChild(fpInd);
+    return fpInd;
+  }
+  function fpShowInd(el, pos) {
+    fpEnsureInd();
+    var r = el.getBoundingClientRect();
+    var s = fpInd.style;
+    s.display = 'block';
+    if (pos === 'inside') {
+      s.background = 'transparent';
+      s.border = '2px solid rgb(59,130,246)';
+      s.borderRadius = '3px';
+      s.left = r.left + 'px'; s.top = r.top + 'px';
+      s.width = r.width + 'px'; s.height = r.height + 'px';
+    } else {
+      s.background = 'rgb(59,130,246)';
+      s.border = 'none';
+      s.borderRadius = '2px';
+      s.left = r.left + 'px'; s.width = r.width + 'px'; s.height = '3px';
+      s.top = ((pos === 'before' ? r.top : r.bottom) - 1.5) + 'px';
+    }
+  }
+  function fpHideInd() { if (fpInd) fpInd.style.display = 'none'; }
+  function fpStartDrag(e, grip) {
+    fpDragging = true;
+    fpDragEl = fpSel;
+    fpDragPath = fpCur ? fpCur.path : null;
+    fpDropTarget = null;
+    grip.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    // Hide the toolbar so it can't sit under the pointer during hit-testing.
+    fpBar.style.display = 'none';
+  }
+  function fpUpdateDrop(x, y) {
+    // Indicator has pointer-events:none, toolbar is hidden — elementFromPoint
+    // returns the real page element.
+    var raw = document.elementFromPoint(x, y);
+    var el = raw ? nearestVisual(raw) : null;
+    if (!el || findSrc(el) !== fpDragPath || el === fpDragEl || fpDragEl.contains(el)) {
+      fpDropTarget = null; fpHideInd(); return;
+    }
+    var r = el.getBoundingClientRect();
+    var rel = r.height ? (y - r.top) / r.height : 0.5;
+    var pos;
+    if (fpCanContain(el) && rel > 0.30 && rel < 0.70) pos = 'inside';
+    else pos = rel < 0.5 ? 'before' : 'after';
+    fpDropTarget = el; fpDropPos = pos;
+    fpShowInd(el, pos);
+  }
+  function fpFinishDrag() {
+    fpDragging = false;
+    document.body.style.userSelect = '';
+    fpHideInd();
+    if (fpDropTarget) {
+      var toOcc = tagOccurrence(fpDropTarget, fpDragPath);
+      var fromOcc = tagOccurrence(fpDragEl, fpDragPath);
+      if (toOcc >= 0 && fromOcc >= 0) {
+        try {
+          parent.postMessage({
+            type: 'fp:move', path: fpDragPath,
+            fromTag: fpDragEl.tagName.toLowerCase(), fromOccurrence: fromOcc,
+            toTag: fpDropTarget.tagName.toLowerCase(), toOccurrence: toOcc,
+            position: fpDropPos,
+          }, '*');
+        } catch (_) {}
+        // Valid drop → parent saves + reloads; leave the toolbar hidden.
+        fpDragEl = null; fpDropTarget = null;
+        return;
+      }
+    }
+    // No / invalid target → restore the toolbar on the still-selected element.
+    fpDragEl = null; fpDropTarget = null;
+    if (fpCur) { fpBar.style.display = 'flex'; fpPosition(); }
+  }
+  window.addEventListener('scroll', fpPosition, true);
+  window.addEventListener('resize', fpPosition);
+
   document.addEventListener('click', function (e) {
+    // Ignore clicks on our own injected chrome (the toolbar buttons).
+    if (e.target.closest && e.target.closest('[data-fp-ui]')) return;
     var path = findSrc(e.target);
-    if (!path) return;
+    if (!path) { hideBar(); return; }
     // Anchor/form clicks would otherwise leave the iframe; in preview
     // mode the click is a selection action, not a navigation.
     e.preventDefault();
@@ -367,6 +569,8 @@ function inject_preview_script(string $body): string
         occurrence: occurrence,
       }, '*');
     } catch (_) {}
+    if (tag && occurrence >= 0) showBar(resolve, path, tag, occurrence);
+    else hideBar();
   }, true);
   // Inverse lookup: walk same-tag elements in document order, return
   // the Nth one whose source-file marker matches `path`. Mirrors the
@@ -393,21 +597,13 @@ function inject_preview_script(string $body): string
     var el = findByOccurrence(data.path, data.tag, data.occurrence);
     if (!el || !el.scrollIntoView) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Briefly outline so the scroll target is obvious. Restore the
-    // original inline outline values so we don't clobber a theme that
-    // sets them itself.
-    var prevOutline = el.style.outline;
-    var prevOffset = el.style.outlineOffset;
-    el.style.outline = '2px solid rgb(59, 130, 246)';
-    el.style.outlineOffset = '2px';
-    setTimeout(function () {
-      el.style.outline = prevOutline;
-      el.style.outlineOffset = prevOffset;
-    }, 1200);
+    // Selecting from the outline gets the same persistent selection outline
+    // + Duplicate/Delete toolbar as a click in the canvas.
+    showBar(el, data.path, data.tag, data.occurrence);
   });
   // Subtle hover outline so the user can tell something is mappable.
   var style = document.createElement('style');
-  style.textContent = '*:hover { outline: 1px dashed rgba(59,130,246,.4); outline-offset: 1px; cursor: crosshair; }';
+  style.textContent = '*:hover:not([data-fp-ui]) { outline: 1px dashed rgba(59,130,246,.4); outline-offset: 1px; cursor: crosshair; } [data-fp-ui] { cursor: pointer; }';
   document.head && document.head.appendChild(style);
 })();</script>
 HTML;

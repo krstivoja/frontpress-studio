@@ -107,6 +107,36 @@ export function moveBlock(source, fromId, toId, position, blocks) {
   return lines.join('\n');
 }
 
+/**
+ * Duplicate a block: copy its source line-range and insert the copy
+ * immediately after the original. Returns the new source string, or the
+ * original unchanged when the block can't be located or has no line range
+ * (Twig/marker blocks that never closed clamp to a range, so those work too).
+ */
+export function duplicateBlock(source, id, blocks) {
+  if (!id) return source;
+  const block = findBlock(blocks, id);
+  if (!block || !block.startLine || !block.endLine) return source;
+  const lines = String(source || '').split('\n');
+  const chunk = lines.slice(block.startLine - 1, block.endLine);
+  lines.splice(block.endLine, 0, ...chunk);
+  return lines.join('\n');
+}
+
+/**
+ * Delete a block by removing its source line-range. Returns the new source
+ * string, or the original unchanged when the block can't be located or has
+ * no line range.
+ */
+export function deleteBlock(source, id, blocks) {
+  if (!id) return source;
+  const block = findBlock(blocks, id);
+  if (!block || !block.startLine || !block.endLine) return source;
+  const lines = String(source || '').split('\n');
+  lines.splice(block.startLine - 1, block.endLine - block.startLine + 1);
+  return lines.join('\n');
+}
+
 function isDescendant(blocks, ancestorId, candidateId) {
   function walk(items, foundAncestor) {
     for (const b of items) {
