@@ -8,6 +8,7 @@ import {
   moveBlock,
   parseThemeBlocks,
 } from '../lib/themeBuilderBlocks.js';
+import { setBlockText } from '../lib/themeBuilderText.js';
 import { useThemePreviewBridge } from '../lib/useThemePreviewBridge.js';
 import {
   insertSnippet,
@@ -30,6 +31,10 @@ export default function ThemeBuilder() {
   const [draft, setDraft] = useState('');
   const [dirty, setDirty] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState('');
+  // Bumped to re-focus the code editor on a block's line even when it's
+  // already selected — used when a data-bound canvas element sends the user
+  // to the code row to edit its Twig / PHP.
+  const [focusTick, setFocusTick] = useState(0);
   const [previewKey, setPreviewKey] = useState(Date.now());
   const [previewPath, setPreviewPath] = useState('/');
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
@@ -189,11 +194,34 @@ export default function ThemeBuilder() {
     save.mutate(next);
   }
 
+  // Inline edit committed on the canvas — `edit` carries the new inner HTML
+  // and optional block formatting (text-align, tag switch). `setBlockText`
+  // no-ops (returns the same source) for data-bound / non-literal text, so a
+  // stray commit just saves nothing rather than corrupting the template.
+  function runText(blockId, edit) {
+    if (!blockId) return;
+    const next = setBlockText(draft, blockId, edit, blocks);
+    if (next === draft) return;
+    setDraft(next);
+    setDirty(true);
+    setSelectedBlockId('');
+    save.mutate(next);
+  }
+
   // Iframe ↔ editor bridge: click-to-select (`fp:select`), the in-canvas
   // Duplicate/Delete toolbar (`fp:action`), and drag-to-move (`fp:move`).
+  // Send the user to the source line of a canvas element and focus the code
+  // editor there — the actionable path for data-bound / non-literal text that
+  // can't be edited on the canvas.
+  function gotoSource(blockId) {
+    if (!blockId) return;
+    setSelectedBlockId(blockId);
+    setFocusTick((t) => t + 1);
+  }
+
   useThemePreviewBridge({
     files, path, draft, blocks, dirty,
-    setPath, setDraft, setDirty, setSelectedBlockId, runAction, runMove,
+    setPath, setDraft, setDirty, setSelectedBlockId, runAction, runMove, runText, gotoSource,
   });
 
   function chooseFile(next) {
@@ -284,6 +312,7 @@ export default function ThemeBuilder() {
               selectedPath={path}
               draft={draft}
               focusLine={selectedBlock?.startLine || null}
+              focusTick={focusTick}
               blocks={blocks}
               cursorLine={cursorLine}
               selectedBlockId={selectedBlockId}

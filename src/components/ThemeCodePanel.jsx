@@ -12,6 +12,7 @@ export default function ThemeCodePanel({
   selectedPath,
   draft,
   focusLine,
+  focusTick,
   blocks,
   cursorLine,
   selectedBlockId,
@@ -64,6 +65,7 @@ export default function ThemeCodePanel({
           onCursorChange={onCursorChange}
           filename={selectedPath}
           focusLine={focusLine}
+          focusTick={focusTick}
           snippets={snippets}
           className="min-h-0 flex-1"
         />

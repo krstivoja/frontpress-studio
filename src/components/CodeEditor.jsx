@@ -50,6 +50,9 @@ export default function CodeEditor({
   filename = null,
   className = '',
   focusLine = null,
+  // Bump to re-run the reveal/focus effect even when `focusLine` is
+  // unchanged — e.g. jumping to the code row for the already-selected block.
+  focusTick = 0,
   // Snippet autocomplete. Caller passes a list of `{id, label, body, description?}`;
   // typing `@<id>` in the editor surfaces them in Monaco's suggestion
   // dropdown. Enter / Tab inserts `body` and replaces the `@<id>` prefix.
@@ -106,7 +109,7 @@ export default function CodeEditor({
       endColumn: endCol,
     });
     editor.focus();
-  }, [focusLine]);
+  }, [focusLine, focusTick]);
 
   return (
     <div className={`cm-host text-[13px] ${className}`}>
