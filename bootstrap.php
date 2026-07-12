@@ -285,6 +285,34 @@ function inject_preview_script(string $body): string
 {
     $script = <<<'HTML'
 <script>(function () {
+  // --- Scroll preservation across Theme Builder reloads ---------------
+  // Save / duplicate / delete / move all re-navigate this iframe to the
+  // freshly rendered output. Without this the iframe would land at the
+  // top on every edit. We stash the offset on `pagehide` and restore it
+  // on the next load, keyed by pathname so switching to a different
+  // preview URL doesn't inherit a stale offset.
+  try {
+    var FP_SCROLL_KEY = 'fp:preview-scroll';
+    var fpSaved = sessionStorage.getItem(FP_SCROLL_KEY);
+    if (fpSaved) {
+      sessionStorage.removeItem(FP_SCROLL_KEY);
+      var fpPos = JSON.parse(fpSaved);
+      if (fpPos && fpPos.path === location.pathname) {
+        var fpRestore = function () { window.scrollTo(fpPos.x || 0, fpPos.y || 0); };
+        // Restore as early as possible, then again after load in case
+        // images / fonts / async content shifted the layout underneath us.
+        requestAnimationFrame(fpRestore);
+        window.addEventListener('load', fpRestore);
+      }
+    }
+    window.addEventListener('pagehide', function () {
+      try {
+        sessionStorage.setItem(FP_SCROLL_KEY, JSON.stringify({
+          path: location.pathname, x: window.scrollX, y: window.scrollY,
+        }));
+      } catch (_) {}
+    });
+  } catch (_) {}
   // Walk back through previous siblings looking for the nearest
   // `fp:src:<path>:start` marker. We balance any `:end` markers we
   // cross — a sibling region's end means we should step past its
@@ -389,21 +417,15 @@ function inject_preview_script(string $body): string
     grip.title = 'Drag to move';
     grip.style.cursor = 'grab';
     grip.style.padding = '4px 6px';
+    // Only `pointerdown` lives on the grip. Movement + release are tracked
+    // on `window` (see fpStartDrag) — hiding the toolbar during the drag
+    // detaches pointer capture from the grip in some browsers, so binding
+    // move/up to the grip would silently drop the rest of the gesture.
     grip.addEventListener('pointerdown', function (e) {
       if (!fpSel) return;
       e.preventDefault();
       e.stopPropagation();
       fpStartDrag(e, grip);
-    });
-    grip.addEventListener('pointermove', function (e) {
-      if (!fpDragging) return;
-      fpUpdateDrop(e.clientX, e.clientY);
-    });
-    grip.addEventListener('pointerup', function (e) {
-      if (!fpDragging) return;
-      e.preventDefault();
-      e.stopPropagation();
-      fpFinishDrag();
     });
     var dup = fpMkBtn('Duplicate', '#e4e4e7');
     var del = fpMkBtn('Delete', '#fca5a5');
@@ -464,8 +486,21 @@ function inject_preview_script(string $body): string
   // we track the drag here and postMessage the parent a `fp:move` with the
   // source + target (tag, occurrence) and a position; the parent resolves
   // both to source blocks, rewrites the template, and reloads this iframe.
-  var fpDragging = false, fpDragEl = null, fpDragPath = null;
+  var fpDragging = false, fpDragEl = null, fpDragPath = null, fpGrip = null;
   var fpDropTarget = null, fpDropPos = null, fpInd = null;
+  // Window-level drag handlers. Bound on drag start and removed on finish so
+  // the gesture keeps tracking even after the captured grip is hidden. Named
+  // (not inline) so the same reference can be removed.
+  function fpOnMove(e) {
+    if (!fpDragging) return;
+    fpUpdateDrop(e.clientX, e.clientY);
+  }
+  function fpOnUp(e) {
+    if (!fpDragging) return;
+    e.preventDefault();
+    e.stopPropagation();
+    fpFinishDrag();
+  }
   function fpEnsureInd() {
     if (fpInd) return fpInd;
     fpInd = document.createElement('div');
@@ -499,9 +534,15 @@ function inject_preview_script(string $body): string
     fpDragEl = fpSel;
     fpDragPath = fpCur ? fpCur.path : null;
     fpDropTarget = null;
+    fpGrip = grip;
     grip.style.cursor = 'grabbing';
     document.body.style.userSelect = 'none';
+    // Best-effort capture keeps events flowing over nested iframes/inputs;
+    // the window listeners below are the reliable fallback if it's dropped.
     try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    window.addEventListener('pointermove', fpOnMove, true);
+    window.addEventListener('pointerup', fpOnUp, true);
+    window.addEventListener('pointercancel', fpOnUp, true);
     // Hide the toolbar so it can't sit under the pointer during hit-testing.
     fpBar.style.display = 'none';
   }
@@ -523,7 +564,11 @@ function inject_preview_script(string $body): string
   }
   function fpFinishDrag() {
     fpDragging = false;
+    window.removeEventListener('pointermove', fpOnMove, true);
+    window.removeEventListener('pointerup', fpOnUp, true);
+    window.removeEventListener('pointercancel', fpOnUp, true);
     document.body.style.userSelect = '';
+    if (fpGrip) { fpGrip.style.cursor = 'grab'; fpGrip = null; }
     fpHideInd();
     if (fpDropTarget) {
       var toOcc = tagOccurrence(fpDropTarget, fpDragPath);

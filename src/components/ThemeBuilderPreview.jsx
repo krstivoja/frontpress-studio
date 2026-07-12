@@ -7,7 +7,14 @@ import { occurrenceOfBlock } from '../lib/themeBuilderBlocks.js';
 // `/blog/some-post` while tweaking `templates/post.twig`.
 //
 // `cacheBust` flips on save and on the Reload button click; we append it
-// as a query param so the iframe reloads with the fresh bundle.
+// as a query param on `src` so the iframe re-navigates to the freshly
+// rendered output. We deliberately do NOT `key` the iframe on `src` —
+// keying tears down and recreates the element, which drops the scroll
+// position and fires an extra repaint. Updating the `src` attribute on
+// the same element navigates it in place; the injected preview script
+// (see bootstrap.php `inject_preview_script`) saves the scroll offset on
+// `pagehide` and restores it on load, so save / duplicate / delete /
+// move keep the user where they were instead of jumping to the top.
 //
 // `filePath` + `blocks` are the parsed tree of the file currently open in
 // the editor; combined with `selectedBlock` they let us postMessage the
@@ -113,7 +120,6 @@ export default function ThemeBuilderPreview({
         )}
       </div>
       <iframe
-        key={src}
         ref={iframeRef}
         title="Theme preview"
         src={src}
