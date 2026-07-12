@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api.js';
+import { fileTypeKey, presentFileTypes } from '../lib/fileTypes.js';
 import { Button, ConfirmDialog } from './ui/index.js';
 import { IconFile, IconPlus } from './icons.jsx';
 import PathDialog from './ThemeFilePathDialog.jsx';
@@ -21,6 +22,30 @@ export default function ThemeBuilderFilesTab({
   const [dialog, setDialog] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [topError, setTopError] = useState('');
+  // Active file-type filters (bucket keys from fileTypes.js). Empty = show
+  // all. Only buckets actually present in `files` get a chip.
+  const [activeTypes, setActiveTypes] = useState([]);
+
+  const typeOptions = useMemo(() => presentFileTypes(files), [files]);
+  const visibleFiles = useMemo(() => {
+    if (!activeTypes.length) return files || [];
+    const sel = new Set(activeTypes);
+    return (files || []).filter((f) => sel.has(fileTypeKey(f.name)));
+  }, [files, activeTypes]);
+
+  // Drop any active filter whose type no longer exists (last file of that
+  // type renamed/deleted) so the list can't get stuck showing nothing.
+  useEffect(() => {
+    const present = new Set(typeOptions.map((t) => t.key));
+    setActiveTypes((prev) => {
+      const next = prev.filter((k) => present.has(k));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [typeOptions]);
+
+  const toggleType = (key) =>
+    setActiveTypes((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: ['theme-files', theme] });
@@ -105,11 +130,31 @@ export default function ThemeBuilderFilesTab({
         <div className="mb-2 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-700">{topError}</div>
       )}
 
+      {typeOptions.length > 1 && (
+        <div className="mb-2 flex flex-wrap gap-1">
+          <TypeChip
+            label="All"
+            active={!activeTypes.length}
+            onClick={() => setActiveTypes([])}
+          />
+          {typeOptions.map((t) => (
+            <TypeChip
+              key={t.key}
+              label={t.label}
+              count={t.count}
+              color={t.color}
+              active={activeTypes.includes(t.key)}
+              onClick={() => toggleType(t.key)}
+            />
+          ))}
+        </div>
+      )}
+
       {!files?.length ? (
         <div className="text-xs text-zinc-500">No files in this theme.</div>
       ) : (
         <ul className="space-y-0.5">
-          {files.map((file) => {
+          {visibleFiles.map((file) => {
             const active = file.path === selectedPath;
             return (
               <li key={file.path}>
@@ -182,6 +227,31 @@ function extOf(name) {
   return i >= 0 ? name.slice(i + 1) : '';
 }
 
+// A single file-type filter toggle. `color` drives the leading dot; the
+// "All" chip passes none. Active state mirrors the selected file rows.
+function TypeChip({ label, count, color, active, onClick }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${
+        active
+          ? 'bg-zinc-900 text-white'
+          : 'border border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+      }`}
+    >
+      {color && (
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+      )}
+      {label}
+      {typeof count === 'number' && (
+        <span className={active ? 'text-zinc-300' : 'text-zinc-400'}>{count}</span>
+      )}
+    </button>
+  );
+}
+
 function ContextMenu({ x, y, onAction }) {
   const item = (label, action, danger) => (
     <button
@@ -201,7 +271,7 @@ function ContextMenu({ x, y, onAction }) {
     <div
       role="menu"
       onClick={(e) => e.stopPropagation()}
-      className="fixed z-50 min-w-[160px] overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-lg"
+      className="fixed z-50 min-w-40 overflow-hidden rounded-md border border-zinc-200 bg-white py-1 shadow-lg"
       style={{ left: x, top: y }}
     >
       {item('Rename...', 'rename')}
