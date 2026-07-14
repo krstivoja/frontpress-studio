@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import CodeEditor from './CodeEditor.jsx';
 import ThemeBuilderComponentsPanel from './ThemeBuilderComponentsPanel.jsx';
+import ThemeBuilderPatternsPanel from './ThemeBuilderPatternsPanel.jsx';
 import ThemeBuilderFieldsPanel from './ThemeBuilderFieldsPanel.jsx';
 import ResizableAside from './ResizableAside.jsx';
 import { findAncestorsAtLine } from '../lib/themeBuilderBlocks.js';
@@ -24,6 +25,8 @@ export default function ThemeCodePanel({
   onCursorChange,
   onSelectBlock,
   onInsertSnippet,
+  onInsertComponent,
+  onOpenComponentCode,
 }) {
   const crumbs = useMemo(
     () => (Array.isArray(blocks) ? findAncestorsAtLine(blocks, cursorLine || 1) : []),
@@ -80,7 +83,7 @@ export default function ThemeCodePanel({
           className="flex flex-col border-l border-zinc-200 bg-zinc-50"
         >
           <div className="flex h-7 shrink-0 items-stretch border-b border-zinc-200 bg-white text-[11px] font-semibold uppercase tracking-wider">
-            {[['snippets', 'Snippets'], ['fields', 'Fields']].map(([key, label]) => (
+            {[['snippets', 'Snippets'], ['patterns', 'Components'], ['fields', 'Fields']].map(([key, label]) => (
               <button
                 key={key}
                 type="button"
@@ -103,6 +106,14 @@ export default function ThemeCodePanel({
                 files={files}
                 theme={theme}
                 onInsert={onInsertSnippet}
+              />
+            ) : tab === 'patterns' ? (
+              <ThemeBuilderPatternsPanel
+                isTwig={isTwig}
+                theme={theme}
+                canInsert={!!selectedPath}
+                onInsert={onInsertComponent}
+                onOpenCode={onOpenComponentCode}
               />
             ) : (
               <ThemeBuilderFieldsPanel

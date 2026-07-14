@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "php-server",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["-S", "127.0.0.1:8080", "router.php"],
+      "port": 8080
+    },
+    {
+      "name": "vite-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "src", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}

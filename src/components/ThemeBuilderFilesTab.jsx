@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api.js';
 import { fileTypeKey, presentFileTypes } from '../lib/fileTypes.js';
+import { stubForPath } from '../lib/themeTemplateStubs.js';
 import { Button, ConfirmDialog } from './ui/index.js';
 import { IconFile, IconPlus } from './icons.jsx';
 import PathDialog from './ThemeFilePathDialog.jsx';
@@ -58,7 +59,7 @@ export default function ThemeBuilderFilesTab({
   };
 
   const createMut = useMutation({
-    mutationFn: ({ path }) => api.post('/themes/file-create', { theme, path, content: '' }),
+    mutationFn: ({ path }) => api.post('/themes/file-create', { theme, path, content: stubForPath(path) }),
     onSuccess: (res) => onMutated(res.path),
   });
   const renameMut = useMutation({

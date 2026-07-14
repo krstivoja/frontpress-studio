@@ -33,7 +33,12 @@ defined('FRONTPRESS_BOOT') || exit;
  */
 class ThemeComponentRegistry
 {
-    public function __construct(private string $themesDir) {}
+    private ThemeComponentScanner $scanner;
+
+    public function __construct(private string $themesDir)
+    {
+        $this->scanner = new ThemeComponentScanner();
+    }
 
     /**
      * List components for a theme, normalized + deterministically ordered
@@ -47,7 +52,7 @@ class ThemeComponentRegistry
         $out      = [];
         $seen     = [];
 
-        foreach ($this->scanSidecars($themeDir) as [$jsonPath, $tplRel, $stemId]) {
+        foreach ($this->scanner->sidecars($themeDir) as [$jsonPath, $tplRel, $stemId]) {
             $raw = json_decode((string)@file_get_contents($jsonPath), true);
             if (!is_array($raw)) continue;
             $norm = ThemeComponentManifest::normalize($raw, $stemId);
@@ -55,13 +60,28 @@ class ThemeComponentRegistry
             $seen[$norm['id']] = true;
             $norm['template']        = $tplRel;
             $norm['template_exists'] = true; // sibling existence is how we found it
+            $norm['has_manifest']    = true;
             $out[] = $norm;
         }
 
         foreach ($this->readLegacy($theme) as $entry) {
             if (isset($seen[$entry['id']])) continue;
             $seen[$entry['id']] = true;
+            $entry['has_manifest'] = true;
             $out[] = $entry;
+        }
+
+        // Bare component templates: any `templates/components/*.twig|php` with
+        // no manifest is still a usable `<Tag/>`, so surface it as a component
+        // (empty inputs, `has_manifest: false`) rather than hiding it.
+        foreach ($this->scanner->bareComponents($themeDir) as [$tplRel, $stemId]) {
+            $norm = ThemeComponentManifest::normalize([], $stemId);
+            if ($norm === null || isset($seen[$norm['id']])) continue;
+            $seen[$norm['id']] = true;
+            $norm['template']        = $tplRel;
+            $norm['template_exists'] = true;
+            $norm['has_manifest']    = false;
+            $out[] = $norm;
         }
 
         usort($out, static function (array $a, array $b): int {
@@ -93,7 +113,11 @@ class ThemeComponentRegistry
         $clean    = ThemeComponentManifest::forWrite($patch);
         $template = $this->validateTemplatePath($theme, (string)($patch['template'] ?? ''));
 
-        if ($this->find($theme, $clean['id']) !== null) {
+        // A bare component template (no manifest yet) is not a real
+        // collision — writing this sidecar is exactly how you register it.
+        // Only a manifest-backed entry with the same id blocks.
+        $existing = $this->find($theme, $clean['id']);
+        if ($existing !== null && ($existing['has_manifest'] ?? true)) {
             throw new \RuntimeException("A component with id `{$clean['id']}` already exists.");
         }
         $sidecar = $this->sidecarPath($theme, $template);
@@ -162,33 +186,6 @@ class ThemeComponentRegistry
      * @return list<array{0: string, 1: string, 2: string}>
      *         [absolute json path, template path relative to theme, stem id]
      */
-    private function scanSidecars(string $themeDir): array
-    {
-        $tplDir = $themeDir . '/templates';
-        if (!is_dir($tplDir)) return [];
-
-        $out  = [];
-        $iter = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($tplDir, \FilesystemIterator::SKIP_DOTS),
-        );
-        foreach ($iter as $file) {
-            if (!$file->isFile() || strtolower($file->getExtension()) !== 'json') continue;
-            $dir  = $file->getPath();
-            $stem = $file->getBasename('.json');
-            $tpl  = null;
-            foreach (['twig', 'php'] as $ext) {
-                if (is_file($dir . '/' . $stem . '.' . $ext)) {
-                    $tpl = $dir . '/' . $stem . '.' . $ext;
-                    break;
-                }
-            }
-            if ($tpl === null) continue;
-            $tplRel = ltrim(str_replace($themeDir, '', $tpl), '/');
-            $out[]  = [$file->getPathname(), $tplRel, ltrim($stem, '_')];
-        }
-        return $out;
-    }
-
     /** Resolve where a template's sidecar lives (sibling `<stem>.json`). */
     private function sidecarPath(string $theme, string $templateRel): string
     {

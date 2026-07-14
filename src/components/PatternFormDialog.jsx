@@ -153,7 +153,7 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-5 py-3">
-          <h3 className="text-sm font-semibold">{editing ? 'Edit pattern' : 'Add pattern'}</h3>
+          <h3 className="text-sm font-semibold">{editing ? 'Edit component' : 'Add component'}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -219,7 +219,7 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
               spellCheck={false}
             />
             <p className="mt-1 text-[11px] text-zinc-500">
-              Optional JSON object. Keys become Twig variables when this pattern is rendered in the preview.
+              Optional JSON object. Keys become Twig variables when this component is rendered in the preview.
               Leave blank to use the neutral defaults.
             </p>
           </Field>
@@ -235,7 +235,7 @@ export default function PatternFormDialog({ open, theme, editing, onClose, onSav
               Cancel
             </Button>
             <Button type="submit" disabled={busy}>
-              {busy ? 'Saving…' : editing ? 'Save changes' : 'Add pattern'}
+              {busy ? 'Saving…' : editing ? 'Save changes' : 'Add component'}
             </Button>
           </div>
         </form>

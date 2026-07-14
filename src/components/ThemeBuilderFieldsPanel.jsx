@@ -51,7 +51,9 @@ export default function ThemeBuilderFieldsPanel({ theme, selectedPath }) {
     [compId, selectedTemplate],
   );
   const activeComponent = component || draftComponent;
-  const hasManifest = !!component;
+  // A bare component (listed from disk, no sidecar) reports has_manifest:false
+  // — treat it like the draft so Save writes its first manifest via add().
+  const hasManifest = !!component && component.has_manifest !== false;
 
   const componentKey = activeComponent
     ? `${hasManifest ? 'manifest' : 'draft'}\n${activeComponent.id}\n${normalizeTemplatePath(activeComponent.template)}`

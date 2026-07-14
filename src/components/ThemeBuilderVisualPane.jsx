@@ -22,8 +22,6 @@ export default function ThemeBuilderVisualPane({
   onChangeDraft,
   onSelectFile,
   onPreviewPathChange,
-  onDuplicateBlock,
-  onDeleteBlock,
 }) {
   const [tab, setTab] = useState('List');
 
@@ -94,8 +92,6 @@ export default function ThemeBuilderVisualPane({
         blocks={blocks}
         filePath={filePath}
         onPathChange={onPreviewPathChange}
-        onDuplicate={onDuplicateBlock}
-        onDelete={onDeleteBlock}
       />
     </div>
   );
