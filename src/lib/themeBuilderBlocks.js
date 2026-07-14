@@ -108,6 +108,45 @@ export function moveBlock(source, fromId, toId, position, blocks) {
 }
 
 /**
+ * Insert a fresh chunk of source (e.g. a component `<Tag/>` snippet)
+ * relative to a target block. `position: 'before' | 'after' | 'inside'`
+ * mirrors `moveBlock`'s drop semantics but there's no source chunk to
+ * remove — the lines come from the caller.
+ *
+ * Re-indents `snippetLines` to the target context (its own leading indent
+ * is stripped first, then the target row's indent — plus one step for
+ * `'inside'` — is applied). Returns the new source string, or the original
+ * unchanged when the target can't be located or the snippet is empty.
+ */
+export function insertBlockRelative(source, toId, position, snippetLines, blocks) {
+  if (!toId || !['before', 'after', 'inside'].includes(position)) return source;
+  if (!Array.isArray(snippetLines) || snippetLines.length === 0) return source;
+
+  const flat = flattenBlocks(blocks);
+  const to = flat.find((b) => b.id === toId);
+  if (!to || !to.startLine || !to.endLine) return source;
+
+  const lines = String(source || '').split('\n');
+  const targetLine = lines[to.startLine - 1] || '';
+  const baseIndent = targetLine.match(/^\s*/)?.[0] || '';
+  const indent = position === 'inside' ? baseIndent + '  ' : baseIndent;
+
+  const currentIndent = minLeadingWhitespace(snippetLines);
+  const reindented = snippetLines.map((l) => {
+    const body = l.length >= currentIndent ? l.slice(currentIndent) : l;
+    return body.length ? indent + body : body;
+  });
+
+  let insertAt;
+  if (position === 'before') insertAt = to.startLine - 1;
+  else if (position === 'after') insertAt = to.endLine;
+  else insertAt = to.startLine; // 'inside' → first child of the target
+
+  lines.splice(insertAt, 0, ...reindented);
+  return lines.join('\n');
+}
+
+/**
  * Duplicate a block: copy its source line-range and insert the copy
  * immediately after the original. Returns the new source string, or the
  * original unchanged when the block can't be located or has no line range

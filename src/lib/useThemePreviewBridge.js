@@ -10,6 +10,7 @@ import { textEditReason, rawBlockInner } from './themeBuilderText.js';
  *   - `fp:select`     — user clicked an element; select its source block.
  *   - `fp:action`     — user hit Duplicate / Delete on the in-canvas toolbar.
  *   - `fp:move`       — user drag-dropped an element to reorder / reparent it.
+ *   - `fp:insert`     — user dropped a sidebar component onto the canvas.
  *   - `fp:text-probe` — user double-clicked text; asks whether it's editable.
  *   - `fp:text`       — user committed an inline text edit.
  *   - `fp:goto-source`— data-bound text: jump to + focus its source line.
@@ -35,6 +36,7 @@ export function useThemePreviewBridge({
   runAction,
   runMove,
   runText,
+  runInsert,
   gotoSource,
 }) {
   // A single queued message awaiting the switched-to file's draft.
@@ -51,7 +53,8 @@ export function useThemePreviewBridge({
     }
     const match = findElementByTag(blocks, data.tag || null, data.occurrence ?? -1);
     if (!match) return;
-    if (data.type === 'fp:action') runAction(data.action, match.id);
+    if (data.type === 'fp:insert') runInsert(match.id, data.position);
+    else if (data.type === 'fp:action') runAction(data.action, match.id);
     else if (data.type === 'fp:text') {
       if (data.raw != null) runText(match.id, { rawInner: data.raw });
       else runText(match.id, { html: data.html, align: data.align, tag: data.newTag });
@@ -96,7 +99,7 @@ export function useThemePreviewBridge({
         return;
       }
 
-      if (!['fp:select', 'fp:action', 'fp:move', 'fp:text', 'fp:goto-source'].includes(data.type)) return;
+      if (!['fp:select', 'fp:action', 'fp:move', 'fp:insert', 'fp:text', 'fp:goto-source'].includes(data.type)) return;
       if (typeof data.path !== 'string' || !files.some((f) => f.path === data.path)) return;
 
       if (path === data.path) {

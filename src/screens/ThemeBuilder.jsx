@@ -1,4 +1,5 @@
 import { useThemeBuilder } from '../lib/useThemeBuilder.js';
+import { startComponentPlacement } from '../lib/themeComponentPlacement.js';
 import { Alert } from '../components/ui/index.js';
 import ThemeBuilderHeader from '../components/ThemeBuilderHeader.jsx';
 import ThemeBuilderVisualPane from '../components/ThemeBuilderVisualPane.jsx';
@@ -72,6 +73,12 @@ export default function ThemeBuilder() {
               onInsertSnippet={tb.insertSnippetAtCursor}
               onInsertComponent={tb.insertComponentTag}
               onOpenComponentCode={tb.chooseFile}
+              onPlaceComponent={(e, component) => {
+                startComponentPlacement(e, {
+                  path: tb.path,
+                  onArm: () => tb.startPlacingComponent(component),
+                });
+              }}
             />
           )}
         </div>

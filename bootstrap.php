@@ -591,6 +591,46 @@ function inject_preview_script(string $body): string
     fpDragEl = null; fpDropTarget = null;
     if (fpCur) { fpBar.style.display = 'flex'; fpPosition(); }
   }
+  // --- Drag-to-place (sidebar component → canvas) ----------------------
+  // The sidebar can't drag across the iframe boundary either, so it streams
+  // pointer coordinates via `fp:place-move` (iframe-relative x/y + the open
+  // file path). We reuse the move indicator to show a before/after/inside
+  // drop, then on `fp:place-end` (commit) post `fp:insert` back with the
+  // target element (tag, occurrence) + position; the parent inserts the
+  // component's `<Tag/>` at that source line, saves, and reloads us.
+  var fpPlacePath = null, fpPlaceTarget = null, fpPlacePos = null;
+  function fpUpdatePlace(x, y, path) {
+    fpPlacePath = path;
+    if (fpBar) fpBar.style.display = 'none';   // don't let the toolbar block hit-testing
+    var raw = document.elementFromPoint(x, y);
+    var el = raw ? nearestVisual(raw) : null;
+    if (!el || findSrc(el) !== path) { fpPlaceTarget = null; fpHideInd(); return; }
+    var r = el.getBoundingClientRect();
+    var rel = r.height ? (y - r.top) / r.height : 0.5;
+    var pos;
+    if (fpCanContain(el) && rel > 0.30 && rel < 0.70) pos = 'inside';
+    else pos = rel < 0.5 ? 'before' : 'after';
+    fpPlaceTarget = el; fpPlacePos = pos;
+    fpShowInd(el, pos);
+  }
+  function fpEndPlace(commit) {
+    fpHideInd();
+    var t = fpPlaceTarget, pos = fpPlacePos, path = fpPlacePath;
+    fpPlaceTarget = null; fpPlacePath = null;
+    if (commit && t) {
+      var occ = tagOccurrence(t, path);
+      if (occ >= 0) {
+        try {
+          parent.postMessage({
+            type: 'fp:insert', path: path,
+            tag: t.tagName.toLowerCase(), occurrence: occ, position: pos,
+          }, '*');
+        } catch (_) {}
+      }
+    }
+    // Restore the selection toolbar if something was selected before the drag.
+    if (fpCur && fpBar) { fpBar.style.display = 'flex'; fpPosition(); }
+  }
   window.addEventListener('scroll', fpPosition, true);
   window.addEventListener('resize', fpPosition);
 
@@ -908,6 +948,9 @@ function inject_preview_script(string $body): string
   window.addEventListener('message', function (e) {
     var data = e.data;
     if (!data) return;
+    // Sidebar component placement drag: coordinates stream + commit/cancel.
+    if (data.type === 'fp:place-move') { fpUpdatePlace(data.x, data.y, data.path); return; }
+    if (data.type === 'fp:place-end')  { fpEndPlace(!!data.commit); return; }
     // Verdict for a pending double-click probe. Match it to the element we
     // queued so a stale reply can't hijack a newer edit.
     if (data.type === 'fp:text-verdict') {

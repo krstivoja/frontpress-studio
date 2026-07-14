@@ -22,7 +22,7 @@ const PREVIEW_MAX = 320;
 // grouped by category, each with a live iframe preview (same
 // `/themes/component-preview` endpoint the modal uses) and the same
 // Insert / Open code / Edit / Delete actions.
-export default function ThemeBuilderPatternsPanel({ isTwig, theme, canInsert, onInsert, onOpenCode }) {
+export default function ThemeBuilderPatternsPanel({ isTwig, theme, canInsert, onInsert, onOpenCode, onPlace }) {
   const qc    = useQueryClient();
   const toast = useToast();
   // Form dialog state: `null` = closed, `{}` = new pattern, `{component}` = editing.
@@ -146,6 +146,7 @@ export default function ThemeBuilderPatternsPanel({ isTwig, theme, canInsert, on
                   onOpenCode={() => onOpenCode?.(c.template)}
                   onEdit={() => setEditing({ component: c })}
                   onDelete={() => deleteComponent(c)}
+                  onPlace={onPlace ? (e) => onPlace(e, c) : undefined}
                 />
               ))}
             </div>
@@ -164,7 +165,7 @@ export default function ThemeBuilderPatternsPanel({ isTwig, theme, canInsert, on
   );
 }
 
-function PatternCard({ component, theme, canInsert, onInsert, onOpenCode, onEdit, onDelete }) {
+function PatternCard({ component, theme, canInsert, onInsert, onOpenCode, onEdit, onDelete, onPlace }) {
   const [loaded, setLoaded] = useState(false);
   const [height, setHeight] = useState(null);
   const stale = !component.template_exists;
@@ -187,11 +188,18 @@ function PatternCard({ component, theme, canInsert, onInsert, onOpenCode, onEdit
     }
   }
 
+  // The preview thumbnail doubles as a drag handle: press and drag it onto
+  // the canvas to place the component where you drop it. The iframe itself is
+  // pointer-events:none so the pointerdown lands on this wrapper.
+  const canPlace = !stale && canInsert && !!onPlace;
+
   return (
     <div className="overflow-hidden rounded-md border border-zinc-200 bg-white">
       <div
-        className="relative overflow-hidden border-b border-zinc-100 bg-zinc-50"
+        className={`relative overflow-hidden border-b border-zinc-100 bg-zinc-50 ${canPlace ? 'cursor-grab active:cursor-grabbing' : ''}`}
         style={{ height: stale ? 48 : (height ?? PREVIEW_MIN) }}
+        onPointerDown={canPlace ? onPlace : undefined}
+        title={canPlace ? 'Drag onto the canvas to place' : undefined}
       >
         {stale ? (
           <div className="flex h-full items-center justify-center text-[10px] text-zinc-500">
@@ -208,7 +216,7 @@ function PatternCard({ component, theme, canInsert, onInsert, onOpenCode, onEdit
               title={`${component.name} preview`}
               src={src}
               onLoad={measure}
-              className="h-full w-full border-0"
+              className="pointer-events-none h-full w-full border-0"
               sandbox="allow-same-origin"
               tabIndex={-1}
             />

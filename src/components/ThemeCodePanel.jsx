@@ -27,6 +27,7 @@ export default function ThemeCodePanel({
   onInsertSnippet,
   onInsertComponent,
   onOpenComponentCode,
+  onPlaceComponent,
 }) {
   const crumbs = useMemo(
     () => (Array.isArray(blocks) ? findAncestorsAtLine(blocks, cursorLine || 1) : []),
@@ -114,6 +115,7 @@ export default function ThemeCodePanel({
                 canInsert={!!selectedPath}
                 onInsert={onInsertComponent}
                 onOpenCode={onOpenComponentCode}
+                onPlace={onPlaceComponent}
               />
             ) : (
               <ThemeBuilderFieldsPanel

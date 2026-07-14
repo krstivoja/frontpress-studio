@@ -5,6 +5,7 @@ import {
   deleteBlock,
   duplicateBlock,
   findBlock,
+  insertBlockRelative,
   moveBlock,
   parseThemeBlocks,
 } from './themeBuilderBlocks.js';
@@ -193,6 +194,29 @@ export function useThemeBuilder() {
     save.mutate(next);
   }
 
+  // Component drag-to-place: the sidebar streams a placement drag over the
+  // canvas; on drop the iframe posts `fp:insert` with a target block +
+  // position. Insert the armed component's `<Tag/>` there, then persist +
+  // reload like the other canvas edits. The armed component is stashed on a
+  // ref (set at drag start) so the drop handler reads the latest without
+  // re-running the pointer stream.
+  const placingComponent = useRef(null);
+  function startPlacingComponent(component) {
+    placingComponent.current = component || null;
+  }
+  function runInsert(toId, position) {
+    const component = placingComponent.current;
+    placingComponent.current = null;
+    if (!component || !toId || !path) return;
+    const snippet = buildComponentSnippet(component, component.inputs, path);
+    const next = insertBlockRelative(draft, toId, position, snippet.split('\n'), blocks);
+    if (next === draft) return;
+    setDraft(next);
+    setDirty(true);
+    setSelectedBlockId('');
+    save.mutate(next);
+  }
+
   // Inline edit committed on the canvas — `edit` carries the new inner HTML
   // and optional block formatting (text-align, tag switch). `setBlockText`
   // no-ops (returns the same source) for data-bound / non-literal text, so a
@@ -220,7 +244,8 @@ export function useThemeBuilder() {
 
   useThemePreviewBridge({
     files, path, draft, blocks, dirty,
-    setPath, setDraft, setDirty, setSelectedBlockId, runAction, runMove, runText, gotoSource,
+    setPath, setDraft, setDirty, setSelectedBlockId,
+    runAction, runMove, runText, runInsert, gotoSource,
   });
 
   function chooseFile(next) {
@@ -272,7 +297,7 @@ export function useThemeBuilder() {
     setLayout, setSelectedBlockId, setCursorLine, setPreviewPath,
     previewPathTouched,
     chooseFile, updateDraft, applyBlockChange, insertComponentTag,
-    insertSnippetAtCursor,
+    insertSnippetAtCursor, startPlacingComponent,
     saveFile: () => save.mutate(),
     invalidateFiles: () => qc.invalidateQueries({ queryKey: ['theme-files', theme] }),
   };
