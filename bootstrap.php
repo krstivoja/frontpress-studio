@@ -597,6 +597,10 @@ function inject_preview_script(string $body): string
   document.addEventListener('click', function (e) {
     // Ignore clicks on our own injected chrome (the toolbar buttons).
     if (e.target.closest && e.target.closest('[data-fp-ui]')) return;
+    // While editing, clicks inside the editable place the caret — don't turn
+    // them into a fresh selection. Clicks outside first blur-commit the edit
+    // (clearing fpEdit), so those still select normally.
+    if (fpEdit) return;
     var path = findSrc(e.target);
     if (!path) { hideBar(); return; }
     // Anchor/form clicks would otherwise leave the iframe; in preview
@@ -616,6 +620,271 @@ function inject_preview_script(string $body): string
     } catch (_) {}
     if (tag && occurrence >= 0) showBar(resolve, path, tag, occurrence);
     else hideBar();
+  }, true);
+  // --- Inline text editing --------------------------------------------
+  // Double-click a text element to edit it in place. The rendered DOM can't
+  // reveal whether the text is a static literal or resolved `{{ ... }}`
+  // output, so we probe the parent, which inspects the source and replies
+  // with an `fp:text-verdict`: editable → contentEditable; data-bound → a
+  // brief hint. Text with inline formatting (`<span>`, `<a>`, `<strong>`, …)
+  // is editable and round-trips via innerHTML; only Twig/PHP values and
+  // nested block markup are rejected — the parent's guard decides which.
+  var fpEdit = null; // { el, tag, occurrence, path, prev, outlinePrev, offPrev }
+  var fpHint = null, fpHintTimer = null;
+  function fpTextCandidate(node) {
+    var el = nearestVisual(node);
+    if (!el) return null;
+    var path = findSrc(el);
+    if (!path) return null;
+    var tag = el.tagName.toLowerCase();
+    return { el: el, tag: tag, path: path, occurrence: tagOccurrence(el, path) };
+  }
+  function fpOnEditBlur() { fpEndEdit(false); }
+  // --- Formatting toolbar (shown while editing) -----------------------
+  // Bold / Italic act on the selection via execCommand (styleWithCSS off so
+  // they emit <b>/<i> tags, which round-trip through the parent's inline-tag
+  // guard). Align sets `text-align` live; the tag menu switches <p> ↔ <h1>–
+  // <h6>. Buttons preventDefault on mousedown so the editable keeps focus and
+  // selection — a plain focus loss would blur-commit the edit.
+  var fpFmtBar = null, fpTagMenu = null;
+  function fpFmtBtn(label, title, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-fp-ui', '1');
+    b.title = title || '';
+    b.textContent = label;
+    b.style.cssText = 'all:unset;box-sizing:border-box;cursor:pointer;min-width:24px;'
+      + 'text-align:center;padding:4px 6px;border-radius:4px;color:#e4e4e7;'
+      + 'font:600 12px/1 system-ui,-apple-system,sans-serif;';
+    b.addEventListener('mouseenter', function () { b.style.background = 'rgba(255,255,255,.14)'; });
+    b.addEventListener('mouseleave', function () { b.style.background = 'transparent'; });
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); onClick(); });
+    return b;
+  }
+  function fpFmtSep() {
+    var s = document.createElement('div');
+    s.setAttribute('data-fp-ui', '1');
+    s.style.cssText = 'width:1px;align-self:stretch;background:rgba(255,255,255,.18);margin:2px 1px;';
+    return s;
+  }
+  function fpExec(cmd) {
+    if (!fpEdit) return;
+    try { document.execCommand('styleWithCSS', false, false); } catch (_) {}
+    try { document.execCommand(cmd, false, null); } catch (_) {}
+    fpEdit.el.focus();
+  }
+  function fpAlign(dir) {
+    if (!fpEdit) return;
+    fpEdit.el.style.textAlign = dir;
+    fpEdit.el.focus();
+  }
+  function fpToggleTagMenu(anchor) {
+    if (!fpTagMenu) {
+      fpTagMenu = document.createElement('div');
+      fpTagMenu.setAttribute('data-fp-ui', '1');
+      fpTagMenu.style.cssText = 'position:fixed;z-index:2147483647;display:none;flex-direction:column;'
+        + 'background:#18181b;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.35);padding:3px;min-width:72px;';
+      ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].forEach(function (t) {
+        var it = fpFmtBtn(t.toUpperCase(), 'Switch to <' + t + '>', function () { fpPickTag(t); });
+        it.style.textAlign = 'left'; it.style.width = '100%'; it.style.minWidth = '0';
+        fpTagMenu.appendChild(it);
+      });
+      (document.body || document.documentElement).appendChild(fpTagMenu);
+    }
+    if (fpTagMenu.style.display === 'flex') { fpTagMenu.style.display = 'none'; return; }
+    var r = anchor.getBoundingClientRect();
+    fpTagMenu.style.display = 'flex';
+    fpTagMenu.style.left = r.left + 'px';
+    fpTagMenu.style.top = (r.bottom + 4) + 'px';
+  }
+  function fpPickTag(t) {
+    if (!fpEdit) return;
+    if (fpTagMenu) fpTagMenu.style.display = 'none';
+    if (t === fpEdit.tag) return;
+    // A tag rename can't be previewed on a live DOM node, so commit now with
+    // the new tag; the reload re-renders the element as <t>.
+    fpEdit.newTag = t;
+    fpEndEdit(false);
+  }
+  function fpEnsureFmtBar() {
+    if (fpFmtBar) return fpFmtBar;
+    fpFmtBar = document.createElement('div');
+    fpFmtBar.setAttribute('data-fp-ui', '1');
+    fpFmtBar.style.cssText = 'position:fixed;z-index:2147483647;display:none;align-items:center;'
+      + 'gap:1px;padding:3px;background:#18181b;border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.35);';
+    var bBtn = fpFmtBtn('B', 'Bold (⌘B)', function () { fpExec('bold'); });
+    bBtn.style.fontWeight = '800';
+    var iBtn = fpFmtBtn('I', 'Italic (⌘I)', function () { fpExec('italic'); });
+    iBtn.style.fontStyle = 'italic';
+    var tagBtn = fpFmtBtn('¶ ▾', 'Change tag', function () { fpToggleTagMenu(tagBtn); });
+    fpFmtBar.appendChild(bBtn);
+    fpFmtBar.appendChild(iBtn);
+    fpFmtBar.appendChild(fpFmtSep());
+    fpFmtBar.appendChild(fpFmtBtn('L', 'Align left', function () { fpAlign('left'); }));
+    fpFmtBar.appendChild(fpFmtBtn('C', 'Align center', function () { fpAlign('center'); }));
+    fpFmtBar.appendChild(fpFmtBtn('R', 'Align right', function () { fpAlign('right'); }));
+    fpFmtBar.appendChild(fpFmtSep());
+    fpFmtBar.appendChild(tagBtn);
+    fpFmtBar._tagBtn = tagBtn;
+    (document.body || document.documentElement).appendChild(fpFmtBar);
+    return fpFmtBar;
+  }
+  function fpFmtPosition() {
+    if (!fpEdit || !fpFmtBar || fpFmtBar.style.display === 'none') return;
+    var r = fpEdit.el.getBoundingClientRect();
+    var top = r.top - 34;
+    if (top < 4) top = r.bottom + 4;
+    fpFmtBar.style.top = top + 'px';
+    fpFmtBar.style.left = (r.left < 4 ? 4 : r.left) + 'px';
+  }
+  function fpShowFmtBar() {
+    if (!fpEdit) return;
+    var bar = fpEnsureFmtBar();
+    // Tag switch only applies to <p> / <h1>–<h6> blocks.
+    var headingLike = /^(p|h[1-6])$/.test(fpEdit.tag);
+    bar._tagBtn.style.display = headingLike ? '' : 'none';
+    if (headingLike) bar._tagBtn.textContent = fpEdit.tag.toUpperCase() + ' ▾';
+    bar.style.display = 'flex';
+    fpFmtPosition();
+  }
+  window.addEventListener('scroll', fpFmtPosition, true);
+  window.addEventListener('resize', fpFmtPosition);
+  function fpBeginEdit() {
+    if (!fpEdit) return;
+    var el = fpEdit.el;
+    hideBar(); // don't overlap the selection toolbar while typing
+    fpEdit.prev = el.innerHTML;
+    fpEdit.prevAlign = el.style.textAlign || '';
+    fpEdit.newTag = null;
+    fpEdit.outlinePrev = el.style.outline;
+    fpEdit.offPrev = el.style.outlineOffset;
+    el.setAttribute('contenteditable', 'true');
+    el.style.outline = '2px solid rgb(34,197,94)';
+    el.style.outlineOffset = '2px';
+    el.addEventListener('blur', fpOnEditBlur, true);
+    el.focus();
+    try {
+      var range = document.createRange();
+      range.selectNodeContents(el);
+      var sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+    } catch (_) {}
+    fpShowFmtBar();
+  }
+  // Raw source editing for data-bound text: swap the rendered value for the
+  // element's raw inner source (e.g. `{{ meta.title|default('') }}`) so the
+  // user edits the expression itself on the canvas. Committed verbatim — no
+  // formatting toolbar, amber outline to signal "editing source".
+  function fpBeginRawEdit(raw) {
+    if (!fpEdit) return;
+    var el = fpEdit.el;
+    hideBar();
+    fpEdit.rawMode = true;
+    fpEdit.prev = el.innerHTML;
+    fpEdit.prevRaw = String(raw == null ? '' : raw);
+    fpEdit.outlinePrev = el.style.outline;
+    fpEdit.offPrev = el.style.outlineOffset;
+    el.textContent = fpEdit.prevRaw;
+    el.setAttribute('contenteditable', 'plaintext-only');
+    el.style.outline = '2px solid rgb(245,158,11)';
+    el.style.outlineOffset = '2px';
+    el.addEventListener('blur', fpOnEditBlur, true);
+    el.focus();
+    try {
+      var range = document.createRange();
+      range.selectNodeContents(el);
+      var sel = window.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+    } catch (_) {}
+  }
+  // Commit (revert=false) or discard (revert=true) the active edit. No-op
+  // unless we're actually in contentEditable, so an Escape during the probe
+  // wait can't act on a half-set state.
+  function fpEndEdit(revert) {
+    if (!fpEdit || !fpEdit.el.isContentEditable) { fpEdit = null; return; }
+    var el = fpEdit.el, info = fpEdit;
+    el.removeEventListener('blur', fpOnEditBlur, true);
+    el.removeAttribute('contenteditable');
+    el.style.outline = info.outlinePrev;
+    el.style.outlineOffset = info.offPrev;
+    if (fpFmtBar) fpFmtBar.style.display = 'none';
+    if (fpTagMenu) fpTagMenu.style.display = 'none';
+    fpEdit = null;
+
+    // Raw source mode: read the edited expression, restore the rendered look
+    // (until the reload re-renders it), and post the verbatim inner.
+    if (info.rawMode) {
+      var raw = el.textContent;
+      el.innerHTML = info.prev;
+      if (!revert && raw !== info.prevRaw) {
+        try {
+          parent.postMessage({
+            type: 'fp:text', path: info.path, tag: info.tag,
+            occurrence: info.occurrence, raw: raw,
+          }, '*');
+        } catch (_) {}
+      }
+      return;
+    }
+
+    var html = el.innerHTML;
+    var align = el.style.textAlign || '';
+    if (revert) {
+      el.innerHTML = info.prev;
+      el.style.textAlign = info.prevAlign;
+      return;
+    }
+    // Only send the fields that actually changed; the parent no-ops on an
+    // empty diff and reloads on any real change.
+    var msg = { type: 'fp:text', path: info.path, tag: info.tag, occurrence: info.occurrence };
+    var changed = false;
+    if (html !== info.prev) { msg.html = html; changed = true; }
+    if (align !== info.prevAlign) { msg.align = align; changed = true; }
+    if (info.newTag && info.newTag !== info.tag) { msg.newTag = info.newTag; changed = true; }
+    if (!changed) return;
+    try { parent.postMessage(msg, '*'); } catch (_) {}
+  }
+  function fpShowHint(el, message) {
+    if (!fpHint) {
+      fpHint = document.createElement('div');
+      fpHint.setAttribute('data-fp-ui', '1');
+      fpHint.style.cssText = 'position:fixed;z-index:2147483647;pointer-events:none;'
+        + 'background:#18181b;color:#e4e4e7;font:500 11px/1.35 system-ui,-apple-system,sans-serif;'
+        + 'padding:5px 8px;border-radius:5px;box-shadow:0 2px 10px rgba(0,0,0,.35);max-width:230px;';
+      (document.body || document.documentElement).appendChild(fpHint);
+    }
+    fpHint.textContent = message;
+    var r = el.getBoundingClientRect();
+    fpHint.style.display = 'block';
+    fpHint.style.top = ((r.top - 30 < 4) ? r.bottom + 6 : r.top - 30) + 'px';
+    fpHint.style.left = (r.left < 4 ? 4 : r.left) + 'px';
+    if (fpHintTimer) clearTimeout(fpHintTimer);
+    fpHintTimer = setTimeout(function () { if (fpHint) fpHint.style.display = 'none'; }, 2400);
+  }
+  document.addEventListener('dblclick', function (e) {
+    if (e.target.closest && e.target.closest('[data-fp-ui]')) return;
+    if (fpEdit) return; // a probe / edit is already in flight
+    var c = fpTextCandidate(e.target);
+    if (!c || c.occurrence < 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    fpEdit = c;
+    try {
+      parent.postMessage({
+        type: 'fp:text-probe', path: c.path, tag: c.tag, occurrence: c.occurrence,
+      }, '*');
+    } catch (_) {}
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if (!fpEdit || !fpEdit.el.isContentEditable) return;
+    var meta = e.metaKey || e.ctrlKey;
+    if (!fpEdit.rawMode) {
+      if (meta && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); fpExec('bold'); return; }
+      if (meta && (e.key === 'i' || e.key === 'I')) { e.preventDefault(); fpExec('italic'); return; }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fpEndEdit(false); }
+    else if (e.key === 'Escape') { e.preventDefault(); fpEndEdit(true); }
   }, true);
   // Inverse lookup: walk same-tag elements in document order, return
   // the Nth one whose source-file marker matches `path`. Mirrors the
@@ -638,7 +907,29 @@ function inject_preview_script(string $body): string
   // outline so it's obvious which one got picked.
   window.addEventListener('message', function (e) {
     var data = e.data;
-    if (!data || data.type !== 'fp:focus') return;
+    if (!data) return;
+    // Verdict for a pending double-click probe. Match it to the element we
+    // queued so a stale reply can't hijack a newer edit.
+    if (data.type === 'fp:text-verdict') {
+      if (!fpEdit || fpEdit.tag !== data.tag
+        || fpEdit.occurrence !== data.occurrence || fpEdit.path !== data.path) return;
+      if (data.mode === 'rich') fpBeginEdit();
+      else if (data.mode === 'raw') fpBeginRawEdit(data.raw);
+      else {
+        // Not inline-editable and no clean single-line expression — take the
+        // user to the element's source row in the code panel and focus it.
+        var target = fpEdit.el, info = fpEdit;
+        fpEdit = null;
+        try {
+          parent.postMessage({
+            type: 'fp:goto-source', path: info.path, tag: info.tag, occurrence: info.occurrence,
+          }, '*');
+        } catch (_) {}
+        fpShowHint(target, 'Opened the code row to edit this');
+      }
+      return;
+    }
+    if (data.type !== 'fp:focus') return;
     var el = findByOccurrence(data.path, data.tag, data.occurrence);
     if (!el || !el.scrollIntoView) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
