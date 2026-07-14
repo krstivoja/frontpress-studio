@@ -3,6 +3,7 @@ import CodeEditor from './CodeEditor.jsx';
 import ThemeBuilderComponentsPanel from './ThemeBuilderComponentsPanel.jsx';
 import ThemeBuilderPatternsPanel from './ThemeBuilderPatternsPanel.jsx';
 import ThemeBuilderFieldsPanel from './ThemeBuilderFieldsPanel.jsx';
+import ThemeBuilderTabStrip from './ThemeBuilderTabStrip.jsx';
 import ResizableAside from './ResizableAside.jsx';
 import { findAncestorsAtLine } from '../lib/themeBuilderBlocks.js';
 
@@ -28,6 +29,9 @@ export default function ThemeCodePanel({
   onInsertComponent,
   onOpenComponentCode,
   onPlaceComponent,
+  openTabs,
+  onSelectTab,
+  onCloseTab,
 }) {
   const crumbs = useMemo(
     () => (Array.isArray(blocks) ? findAncestorsAtLine(blocks, cursorLine || 1) : []),
@@ -56,6 +60,12 @@ export default function ThemeCodePanel({
   return (
     <div className="flex min-h-0 flex-1 border-t border-zinc-200 bg-white">
       <div className="flex min-w-0 flex-1 flex-col">
+        <ThemeBuilderTabStrip
+          tabs={openTabs}
+          activePath={selectedPath}
+          onSelect={onSelectTab}
+          onClose={onCloseTab}
+        />
         <Breadcrumbs
           crumbs={crumbs}
           selectedBlockId={selectedBlockId}

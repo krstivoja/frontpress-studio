@@ -79,6 +79,9 @@ export default function ThemeBuilder() {
                   onArm: () => tb.startPlacingComponent(component),
                 });
               }}
+              openTabs={tb.openTabs}
+              onSelectTab={tb.chooseFile}
+              onCloseTab={tb.closeFile}
             />
           )}
         </div>

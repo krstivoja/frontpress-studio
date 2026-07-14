@@ -29,9 +29,7 @@ export function useThemePreviewBridge({
   draft,
   blocks,
   dirty,
-  setPath,
-  setDraft,
-  setDirty,
+  openFile,
   setSelectedBlockId,
   runAction,
   runMove,
@@ -107,16 +105,14 @@ export function useThemePreviewBridge({
         resolve(data);
         return;
       }
-      if (dirty && !confirm('Discard unsaved changes?')) return;
-      setPath(data.path);
-      setDraft('');
-      setDirty(false);
-      setSelectedBlockId('');
+      // A canvas element in another file — open/activate its tab (parking the
+      // current tab's edits) and resolve once its draft has parsed.
+      openFile(data.path);
       setPending(data);
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [files, path, draft, dirty, blocks, resolve, setPath, setDraft, setDirty, setSelectedBlockId]);
+  }, [files, path, draft, dirty, blocks, resolve, openFile, setSelectedBlockId]);
 
   // Once the switched-to file's draft has parsed, resolve the queued message.
   useEffect(() => {

@@ -29,10 +29,23 @@ import { readLayout, preferredPath, defaultPreviewPath } from './themeBuilderPat
 export function useThemeBuilder() {
   const qc = useQueryClient();
   const [theme, setTheme] = useState('');
+  // The active tab's live editing state. Downstream code (blocks, preview,
+  // bridge, save) all read these, so the active tab stays a plain single-file
+  // model; other open tabs park their unsaved state in `tabState` below.
   const [path, setPath] = useState('');
   const [draft, setDraft] = useState('');
   const [dirty, setDirty] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState('');
+  // Persistent editor tabs. `openPaths` is the visible tab order; `tabState`
+  // parks each *inactive* tab's {draft, dirty, selectedBlockId, cursorLine}
+  // so switching away and back keeps unsaved edits without a refetch.
+  // `loaded` guards the file-load effect from clobbering a tab that already
+  // has content (freshly-loaded or edited). `prevTheme` drives the reset when
+  // the active theme changes.
+  const [openPaths, setOpenPaths] = useState([]);
+  const tabState = useRef(new Map());
+  const loaded = useRef(new Set());
+  const prevTheme = useRef('');
   // Bumped to re-focus the code editor on a block's line even when it's
   // already selected — used when a data-bound canvas element sends the user
   // to the code row to edit its Twig / PHP.
@@ -87,16 +100,28 @@ export function useThemeBuilder() {
   }, [files, snippetsData]);
 
   useEffect(() => {
-    if (!theme || path || !files.length) return;
+    if (!theme || !files.length) return;
+    // Theme switched out from under us — drop every open tab; the next run
+    // (with `path` now empty) opens this theme's preferred file.
+    if (prevTheme.current && prevTheme.current !== theme) {
+      prevTheme.current = theme;
+      tabState.current.clear();
+      loaded.current.clear();
+      setOpenPaths([]);
+      setPath(''); setDraft(''); setDirty(false); setSelectedBlockId('');
+      return;
+    }
+    prevTheme.current = theme;
+    if (path) return;
     // Honor `?file=<path>` so "Open code" from the Pattern Library lands
     // on the right template. Falls back to the usual preferred path
     // (page.twig / first file) when the query is absent or invalid.
     const requested = new URLSearchParams(window.location.search).get('file');
-    if (requested && files.some((f) => f.path === requested)) {
-      setPath(requested);
-    } else {
-      setPath(preferredPath(files));
-    }
+    const next = (requested && files.some((f) => f.path === requested))
+      ? requested
+      : preferredPath(files);
+    setPath(next);
+    setOpenPaths((prev) => (prev.includes(next) ? prev : [...prev, next]));
   }, [theme, path, files]);
 
   const { data: fileData, isLoading: fileLoading, error: fileError } = useQuery({
@@ -109,9 +134,14 @@ export function useThemeBuilder() {
 
   useEffect(() => {
     if (!fileData || fileData.path !== path) return;
+    // Only hydrate a tab that hasn't been loaded yet. A tab we've already
+    // opened (and possibly edited, or switched back to) keeps its own draft;
+    // a post-save refetch must not clobber it.
+    if (loaded.current.has(path)) return;
     setDraft(fileData.content || '');
     setDirty(false);
     setSelectedBlockId('');
+    loaded.current.add(path);
   }, [fileData, path]);
 
   const blocks = useMemo(() => parseThemeBlocks(draft), [draft]);
@@ -242,19 +272,63 @@ export function useThemeBuilder() {
     setFocusTick((t) => t + 1);
   }
 
+  // Restore a tab's parked state, or reset to a fresh (about-to-load) tab.
+  function loadTabState(next) {
+    const st = tabState.current.get(next);
+    if (st) {
+      setDraft(st.draft);
+      setDirty(st.dirty);
+      setSelectedBlockId(st.selectedBlockId || '');
+      setCursorLine(st.cursorLine || 1);
+    } else {
+      setDraft('');
+      setDirty(false);
+      setSelectedBlockId('');
+      setCursorLine(1);
+      // The file-load effect hydrates it once `fileData` for `next` arrives.
+    }
+  }
+
+  // Activate a tab (opening it first if needed). Parks the outgoing tab's live
+  // state so its unsaved edits survive the switch — no discard prompt, unlike
+  // the old single-file model.
+  function activate(next) {
+    if (!next || next === path) return;
+    if (path) {
+      tabState.current.set(path, { draft, dirty, selectedBlockId, cursorLine });
+    }
+    setOpenPaths((prev) => (prev.includes(next) ? prev : [...prev, next]));
+    setPath(next);
+    loadTabState(next);
+  }
+
   useThemePreviewBridge({
     files, path, draft, blocks, dirty,
-    setPath, setDraft, setDirty, setSelectedBlockId,
+    openFile: activate, setSelectedBlockId,
     runAction, runMove, runText, runInsert, gotoSource,
   });
 
+  // Open a file in a tab (from the outline, Files list, template dropdown, or
+  // "Open code"). Activating an already-open tab just focuses it.
   function chooseFile(next) {
-    if (path === next) return;
-    if (dirty && !confirm('Discard unsaved changes?')) return;
-    setPath(next);
-    setDraft('');
-    setDirty(false);
-    setSelectedBlockId('');
+    activate(next);
+  }
+
+  // Close a tab. Confirms if it has unsaved edits, then activates a neighbour
+  // (or clears the editor when it was the last tab).
+  function closeFile(target) {
+    const targetDirty = target === path ? dirty : (tabState.current.get(target)?.dirty || false);
+    if (targetDirty && !confirm('Discard unsaved changes?')) return;
+    const idx = openPaths.indexOf(target);
+    const remaining = openPaths.filter((p) => p !== target);
+    tabState.current.delete(target);
+    loaded.current.delete(target);
+    setOpenPaths(remaining);
+    if (target !== path) return; // closed a background tab — active unchanged
+    const nextPath = remaining[idx] || remaining[idx - 1] || remaining[0] || '';
+    setPath(nextPath);
+    if (nextPath) loadTabState(nextPath);
+    else { setDraft(''); setDirty(false); setSelectedBlockId(''); setCursorLine(1); }
   }
 
   function updateDraft(next) {
@@ -287,16 +361,26 @@ export function useThemeBuilder() {
   const activeThemeMeta = (themesData?.themes || []).find((t) => t.slug === theme);
   const themeLabel = activeThemeMeta?.name || theme || '';
 
+  // Tab descriptors for the editor tab strip. Per-tab dirty comes from live
+  // state for the active tab, and the parked state for the rest — both are
+  // current at every render because a switch always re-renders and stashes
+  // synchronously before the re-render reads the ref.
+  const openTabs = openPaths.map((p) => ({
+    path: p,
+    name: p.split('/').pop() || p,
+    dirty: p === path ? dirty : (tabState.current.get(p)?.dirty || false),
+  }));
+
   return {
     // data / derived
     theme, path, draft, dirty, files, templates, blocks, selectedBlock,
     selectedBlockId, autocompleteSnippets, cursorLine, focusTick, previewPath,
-    previewKey, layout, isTwig, busy, themeLabel,
+    previewKey, layout, isTwig, busy, themeLabel, openTabs,
     saving: save.isPending, saveError: save.error, fileError,
     // setters / handlers
     setLayout, setSelectedBlockId, setCursorLine, setPreviewPath,
     previewPathTouched,
-    chooseFile, updateDraft, applyBlockChange, insertComponentTag,
+    chooseFile, closeFile, updateDraft, applyBlockChange, insertComponentTag,
     insertSnippetAtCursor, startPlacingComponent,
     saveFile: () => save.mutate(),
     invalidateFiles: () => qc.invalidateQueries({ queryKey: ['theme-files', theme] }),
