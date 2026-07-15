@@ -20,10 +20,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *                  on its left edge, dragging left widens).
  *   defaultWidth — pixels, used on first mount and after reset.
  *   min, max     — clamp bounds in pixels.
+ *   collapseBelow — optional px threshold: dragging narrower than this snaps
+ *                  the aside to `collapsedWidth` and marks it collapsed.
+ *   collapsedWidth — px width in the collapsed state (default 64).
  *   className    — passed through to the underlying `<aside>` (use
  *                  for borders, padding, layout — but NOT a width
  *                  utility like `w-60`; this component owns width).
- *   children     — aside contents.
+ *   children     — aside contents, or a function `({ collapsed }) => node`
+ *                  when the consumer needs to know the collapsed state.
  */
 export default function ResizableAside({
   storageKey,
@@ -31,10 +35,15 @@ export default function ResizableAside({
   defaultWidth,
   min,
   max,
+  collapseBelow = null,
+  collapsedWidth = 64,
   className = '',
   children,
 }) {
-  const [width, setWidth] = useState(() => readStoredWidth(storageKey, defaultWidth, min, max));
+  const [width, setWidth] = useState(
+    () => readStoredWidth(storageKey, defaultWidth, min, max, collapseBelow, collapsedWidth)
+  );
+  const collapsed = collapseBelow != null && width <= collapseBelow;
   const widthRef     = useRef(width);
   const draggingRef  = useRef(false);
   const startXRef    = useRef(0);
@@ -66,7 +75,10 @@ export default function ResizableAside({
     // Handle on the right edge → dragging right (+delta) widens.
     // Handle on the left edge  → dragging left (-delta) widens.
     const signed = side === 'right' ? delta : -delta;
-    setWidth(clamp(startWidthRef.current + signed));
+    const raw = startWidthRef.current + signed;
+    // Drag narrower than the collapse threshold → snap to the icon-only width.
+    if (collapseBelow != null && raw < collapseBelow) setWidth(collapsedWidth);
+    else setWidth(clamp(raw));
   }
 
   function endDrag(e) {
@@ -94,10 +106,20 @@ export default function ResizableAside({
     const narrow = side === 'right' ? ['ArrowLeft', 'ArrowUp']    : ['ArrowRight', 'ArrowUp'];
     if (widen.includes(e.key)) {
       e.preventDefault();
-      setWidth((w) => { const n = clamp(w + step); persist(n); return n; });
+      setWidth((w) => {
+        // Expanding out of the collapsed state jumps back to the min width.
+        const n = (collapseBelow != null && w <= collapseBelow) ? min : clamp(w + step);
+        persist(n);
+        return n;
+      });
     } else if (narrow.includes(e.key)) {
       e.preventDefault();
-      setWidth((w) => { const n = clamp(w - step); persist(n); return n; });
+      setWidth((w) => {
+        const raw = w - step;
+        const n = (collapseBelow != null && raw < collapseBelow) ? collapsedWidth : clamp(raw);
+        persist(n);
+        return n;
+      });
     } else if (e.key === 'Home') {
       e.preventDefault();
       onDoubleClick();
@@ -105,7 +127,11 @@ export default function ResizableAside({
   }
 
   // Re-clamp if min/max change at runtime (rare, but cheap to handle).
-  useEffect(() => { setWidth((w) => clamp(w)); }, [clamp]);
+  // Preserve the collapsed width — clamping it up to `min` would silently
+  // undo the collapsed state on mount.
+  useEffect(() => {
+    setWidth((w) => (collapseBelow != null && w <= collapseBelow) ? collapsedWidth : clamp(w));
+  }, [clamp, collapseBelow, collapsedWidth]);
 
   // Wrapper holds the width and is the positioned ancestor for the
   // absolute handle. The handle is a *sibling* of <aside> rather than
@@ -118,13 +144,13 @@ export default function ResizableAside({
       style={{ width, flex: `0 0 ${width}px` }}
     >
       <aside className={`h-full w-full ${className}`}>
-        {children}
+        {typeof children === 'function' ? children({ collapsed }) : children}
       </aside>
       <div
         role="separator"
         aria-orientation="vertical"
         aria-valuenow={width}
-        aria-valuemin={min}
+        aria-valuemin={collapseBelow != null ? collapsedWidth : min}
         aria-valuemax={max}
         aria-label="Resize panel"
         tabIndex={0}
@@ -150,10 +176,15 @@ export default function ResizableAside({
   );
 }
 
-function readStoredWidth(key, def, min, max) {
+function readStoredWidth(key, def, min, max, collapseBelow, collapsedWidth) {
   try {
     const raw = parseInt(localStorage.getItem(key) || '', 10);
-    if (raw && !isNaN(raw)) return Math.max(min, Math.min(max, raw));
+    if (raw && !isNaN(raw)) {
+      // A stored collapsed width sits below `min`; let it through as the
+      // collapsed state instead of clamping it back up to `min`.
+      if (collapseBelow != null && raw <= collapseBelow) return collapsedWidth;
+      return Math.max(min, Math.min(max, raw));
+    }
   } catch { /* private mode */ }
   return def;
 }
