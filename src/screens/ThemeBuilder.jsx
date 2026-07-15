@@ -49,6 +49,15 @@ export default function ThemeBuilder() {
             tb.previewPathTouched.current = true;
             tb.setPreviewPath(next);
           }}
+          onInsertSnippet={tb.insertSnippetAtCursor}
+          onInsertComponent={tb.insertComponentTag}
+          onOpenComponentCode={tb.chooseFile}
+          onPlaceComponent={(e, component) => {
+            startComponentPlacement(e, {
+              path: tb.path,
+              onArm: () => tb.startPlacingComponent(component),
+            });
+          }}
         />
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -64,21 +73,9 @@ export default function ThemeBuilder() {
               cursorLine={tb.cursorLine}
               selectedBlockId={tb.selectedBlockId}
               snippets={tb.autocompleteSnippets}
-              isTwig={tb.isTwig}
-              files={tb.files}
-              theme={tb.theme}
               onChange={tb.updateDraft}
               onCursorChange={tb.setCursorLine}
               onSelectBlock={tb.setSelectedBlockId}
-              onInsertSnippet={tb.insertSnippetAtCursor}
-              onInsertComponent={tb.insertComponentTag}
-              onOpenComponentCode={tb.chooseFile}
-              onPlaceComponent={(e, component) => {
-                startComponentPlacement(e, {
-                  path: tb.path,
-                  onArm: () => tb.startPlacingComponent(component),
-                });
-              }}
               openTabs={tb.openTabs}
               onSelectTab={tb.chooseFile}
               onCloseTab={tb.closeFile}
