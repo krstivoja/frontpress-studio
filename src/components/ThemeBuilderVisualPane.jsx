@@ -43,7 +43,14 @@ export default function ThemeBuilderVisualPane({
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <aside className="flex w-[280px] shrink-0 flex-col border-r border-zinc-200 bg-white">
+      <ResizableAside
+        storageKey="fp:theme-builder:sidebar-width"
+        side="right"
+        defaultWidth={280}
+        min={220}
+        max={480}
+        className="flex flex-col border-r border-zinc-200 bg-white"
+      >
         <div
           role="tablist"
           aria-label="Sidebar view"
@@ -105,7 +112,7 @@ export default function ThemeBuilderVisualPane({
             />
           )}
         </div>
-      </aside>
+      </ResizableAside>
 
       <div className="flex min-w-0 flex-1">
         <ThemeBuilderPreview
