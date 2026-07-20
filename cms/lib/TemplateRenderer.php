@@ -51,7 +51,7 @@ final class TemplateRenderer
         // Register helpers — names match the global PHP functions so a theme
         // author writes `{{ e(x) }}` / `{{ slug_url(cat) }}` exactly as in PHP.
         $isSafe = ['is_safe' => ['html']];
-        foreach (['e', 'asset_url', 'slug_url'] as $fn) {
+        foreach (['e', 'asset_url', 'slug_url', 'base_path', 'url'] as $fn) {
             $this->twig->addFunction(new TwigFunction($fn, $fn));
         }
         $this->twig->addFunction(new TwigFunction('paginate', 'paginate', $isSafe));

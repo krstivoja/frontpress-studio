@@ -80,7 +80,7 @@ if (!function_exists('paginate')) {
             }
         }
 
-        $base = e($baseUrl);
+        $base = e(base_path() . $baseUrl);
         $href = static function (int $n) use ($base): string {
             return $n === 1 ? $base : $base . '/page/' . $n;
         };
@@ -110,6 +110,42 @@ if (!function_exists('paginate')) {
     }
 }
 
+if (!function_exists('base_path')) {
+    /**
+     * Install subfolder FrontPress is running from (e.g. `/peach`), auto-detected
+     * from SCRIPT_NAME — see cms/lib/base_path.php. Empty string at the domain
+     * root. Prefix any hand-written root-relative link (`<a href="/about">`,
+     * `<img src="/assets/...">`) with this so it survives a subfolder install;
+     * asset_url() and slug_url() already do this for you.
+     */
+    function base_path(): string
+    {
+        return (string)($GLOBALS['fp_base_path'] ?? '');
+    }
+}
+
+if (!function_exists('url')) {
+    /**
+     * Prefix a root-relative path (content field, hand-written template link)
+     * with the install's subfolder — same job as base_path(), but a one-call
+     * wrapper for the common case of "I have a path, make it work at any
+     * install location." Leaves absolute URLs (`https://…`), protocol-relative
+     * (`//…`), and already-relative paths (no leading `/`) untouched.
+     */
+    function url(?string $path): string
+    {
+        $path = (string)$path;
+        // Absolute URLs never start with '/'; protocol-relative ones start
+        // with '//' — both already point somewhere specific and shouldn't
+        // gain a base-path prefix. A path with no leading '/' is already
+        // page-relative and shouldn't either.
+        if ($path === '' || $path[0] !== '/' || str_starts_with($path, '//')) {
+            return $path;
+        }
+        return base_path() . $path;
+    }
+}
+
 if (!function_exists('slug_url')) {
     /**
      * URL for a taxonomy term archive, e.g. `/categories/php` for
@@ -118,7 +154,7 @@ if (!function_exists('slug_url')) {
      */
     function slug_url(string $term, string $taxonomy = 'categories'): string
     {
-        return '/' . e($taxonomy) . '/' . e(FrontPress\Index::slugify($term));
+        return base_path() . '/' . e($taxonomy) . '/' . e(FrontPress\Index::slugify($term));
     }
 }
 
@@ -178,7 +214,7 @@ if (!function_exists('contact_form')) {
 
         $class = htmlspecialchars((string)($opts['class'] ?? 'fp-form'), ENT_QUOTES, 'UTF-8');
         $hp    = htmlspecialchars((string)($spec['honeypot_field'] ?? 'website'), ENT_QUOTES, 'UTF-8');
-        $action = '/submit/' . htmlspecialchars($form, ENT_QUOTES, 'UTF-8');
+        $action = base_path() . '/submit/' . htmlspecialchars($form, ENT_QUOTES, 'UTF-8');
 
         $rows = '';
         foreach ($fields as $f) {

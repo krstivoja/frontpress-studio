@@ -138,6 +138,20 @@ function posts(array $args = []): array
         $posts = array_slice($posts, $offset, $limit ?: null);
     }
 
+    // Index stores 'url' base-path-free (canonical/portable) — themes render
+    // it directly as an <a href>, so prefix here rather than in the index
+    // itself. Url::forPage()/absolute() add the base via origin() separately
+    // and would double it up if it were baked in upstream.
+    $base = (string)($GLOBALS['fp_base_path'] ?? '');
+    if ($base !== '') {
+        foreach ($posts as &$p) {
+            if (isset($p['url'])) {
+                $p['url'] = $base . $p['url'];
+            }
+        }
+        unset($p);
+    }
+
     return $posts;
 }
 

@@ -168,6 +168,9 @@ if (str_starts_with($url, '/submit/')) {
     }
 
     $redirect = (string)($spec['success_redirect'] ?? '/?sent=1');
+    if (!preg_match('#^[a-z][a-z0-9+.-]*://#i', $redirect)) {
+        $redirect = $GLOBALS['fp_base_path'] . $redirect;
+    }
     $errRedirect = function (string $err) use ($redirect) {
         $sep = str_contains($redirect, '?') ? '&' : '?';
         header('Location: ' . $redirect . $sep . 'err=' . urlencode($err), true, 303);
@@ -388,6 +391,13 @@ switch ($route['type']) {
         $items = array_slice($found['posts'], ($page - 1) * $perPage, $perPage);
         foreach ($items as &$it) {
             $it = array_merge($it['meta'] ?? [], $it);
+            // Index stores 'url' base-path-free (canonical/portable); themes
+            // render it directly as an <a href>, so prefix it here rather than
+            // in the index itself — Url::forPage()/absolute() add the base via
+            // origin() separately and would double it up if baked in upstream.
+            if (isset($it['url'])) {
+                $it['url'] = $GLOBALS['fp_base_path'] . $it['url'];
+            }
         }
         unset($it);
         render('taxonomy', [
@@ -422,6 +432,9 @@ switch ($route['type']) {
         // any same-named meta keys.
         foreach ($items as &$it) {
             $it = array_merge($it['meta'] ?? [], $it);
+            if (isset($it['url'])) {
+                $it['url'] = $GLOBALS['fp_base_path'] . $it['url'];
+            }
         }
         unset($it);
         // List of every content folder (for filter-tabs and similar).
