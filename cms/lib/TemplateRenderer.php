@@ -58,6 +58,11 @@ final class TemplateRenderer
         $this->twig->addFunction(new TwigFunction('inspect', 'inspect', $isSafe));
         $this->twig->addFunction(new TwigFunction('seo_head', 'seo_head', $isSafe));
         $this->twig->addFunction(new TwigFunction('contact_form', 'contact_form', $isSafe));
+        // Documented as available in both engines (see docs/templates.md
+        // "Helpers"), but never actually registered here — a theme's Twig
+        // template calling posts(...) got "Unknown function" with no
+        // indication the PHP-side helper existed at all.
+        $this->twig->addFunction(new TwigFunction('posts', 'posts'));
         $this->twig->addFunction(new TwigFunction('partial', function (string $name, array $vars = []): string {
             ob_start();
             partial($name, $vars);
