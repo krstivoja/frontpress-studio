@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api.js';
+import { api, ADMIN_BASE } from '../lib/api.js';
 import { useFileUpload, useConfirmDialog } from '../lib/hooks.js';
 import { encodePath } from '../lib/utils.js';
 import { Alert, ConfirmDialog, Dropzone, SegmentedControl } from './ui/index.js';
@@ -34,7 +34,7 @@ export default function FilesPanel({ pagePath }) {
   });
 
   const { upload, busy, error: uploadError } = useFileUpload({
-    endpoint: '/admin/api/media',
+    endpoint: `${ADMIN_BASE}/admin/api/media`,
     extraFields: { page_path: pagePath },
     invalidate: [['media']],
   });

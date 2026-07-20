@@ -1030,9 +1030,10 @@ function admin_edit_button(): void
         return;
     }
     $path = (string)$GLOBALS['admin_edit_path'];
+    $base = (string)($GLOBALS['fp_base_path'] ?? '');
     // rawurlencode each path segment so spaces / non-ASCII slugs survive
     // the round-trip into React Router.
-    $url  = '/admin/' . implode('/', array_map('rawurlencode', explode('/', $path)));
+    $url  = $base . '/admin/' . implode('/', array_map('rawurlencode', explode('/', $path)));
     $href = htmlspecialchars($url, ENT_QUOTES);
     ?>
 <style>

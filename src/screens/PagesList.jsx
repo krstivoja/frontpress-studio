@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, getCsrf } from '../lib/api.js';
+import { api, getCsrf, ADMIN_BASE } from '../lib/api.js';
 import { usePageTrash } from '../lib/usePageTrash.js';
 import { useDragReorder } from '../lib/useDragReorder.js';
 import { cap } from '../lib/utils.js';
@@ -136,7 +136,7 @@ export default function PagesList() {
       const fd = new FormData();
       if (folder) fd.append('folder', folder);
       for (const f of files) fd.append('files[]', f);
-      const res = await fetch('/admin/api/pages-import', {
+      const res = await fetch(`${ADMIN_BASE}/admin/api/pages-import`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'X-CSRF-Token': getCsrf() },

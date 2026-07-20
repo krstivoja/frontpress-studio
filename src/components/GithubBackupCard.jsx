@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '../lib/api.js';
+import { api, ApiError, ADMIN_BASE } from '../lib/api.js';
 import { useToast } from '../lib/toast.jsx';
 import { Button, Combobox } from './ui/index.js';
 import GithubSourceList from './GithubSourceList.jsx';
@@ -165,7 +165,7 @@ export default function GithubBackupCard() {
           {/* Full-page navigation (not an SPA route) — the server needs
               to issue a 302 to GitHub, which fetch() can't follow
               cross-origin. window.location handoff is the right tool. */}
-          <Button onClick={() => { window.location.href = '/admin/github/connect'; }} disabled={busy}>
+          <Button onClick={() => { window.location.href = `${ADMIN_BASE}/admin/github/connect`; }} disabled={busy}>
             Connect to GitHub
           </Button>
         </div>

@@ -1,6 +1,10 @@
 // Tiny fetch wrapper for /admin/api/*. Sends session cookie automatically
 // (same-origin), attaches CSRF header on mutating requests, and throws on errors.
 
+// Install subfolder, e.g. '/peach' — set by cms/templates/spa.php from the
+// server-side auto-detected base path (cms/lib/base_path.php). '' at root.
+export const ADMIN_BASE = (typeof window !== 'undefined' && window.__FP_BASE__) || '';
+
 let csrfToken = '';
 let onUnauthorized = null;
 
@@ -40,7 +44,7 @@ async function request(method, path, { body, signal } = {}) {
     headers['X-CSRF-Token'] = csrfToken;
   }
 
-  const res = await fetch(`/admin/api${path}`, opts);
+  const res = await fetch(`${ADMIN_BASE}/admin/api${path}`, opts);
   const text = await res.text();
   let data = null;
   let parseOk = false;

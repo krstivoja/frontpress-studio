@@ -122,7 +122,12 @@ class MediaServiceTest extends TestCase
 
     public function testListExcludesThumbnailFiles(): void
     {
-        $dir = $this->uploadsDir . '/media';
+        // MediaService::list() scans $uploadsDir directly, not a `/media`
+        // subfolder (production wires it to site/uploads — see
+        // ServiceFactory::media()). Writing into the never-scanned `/media`
+        // subdir this test's setUp() happens to create was why the file
+        // never showed up in list().
+        $dir = $this->uploadsDir;
         file_put_contents($dir . '/aabbcc.jpg', 'img');
         file_put_contents($dir . '/aabbcc.thumb.jpg', 'thumb');
         $list  = $this->media->list();

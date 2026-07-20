@@ -35,7 +35,8 @@ if (!function_exists('asset_url')) {
     function asset_url(string $path): string
     {
         $path = ltrim($path, '/');
-        $url  = '/assets/' . $path;
+        $base = (string)($GLOBALS['fp_base_path'] ?? '');
+        $url  = $base . '/assets/' . $path;
 
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         if (($ext === 'css' || $ext === 'js') && isset($GLOBALS['fp_template_dir'])) {

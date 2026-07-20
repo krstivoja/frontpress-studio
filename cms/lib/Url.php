@@ -6,6 +6,8 @@ namespace FrontPress;
 
 defined('FRONTPRESS_BOOT') || exit;
 
+require_once __DIR__ . '/base_path.php';
+
 /**
  * Absolute-URL generation. Centralizes the two decisions every generator used
  * to make ad-hoc: what is the site origin, and how do I turn a page record
@@ -41,9 +43,17 @@ class Url
             $scheme = 'https';
         }
         $host = $server['HTTP_HOST'] ?? ($server['SERVER_NAME'] ?? 'localhost');
-        $base = '';
-        if (is_array($site) && !empty($site['base'])) {
-            $base = '/' . trim((string)$site['base'], '/');
+        // "/" is the starter config's default `site.base` (ships on every
+        // fresh install) and means "no subfolder" — same as unset. Only a
+        // real subfolder value (e.g. "/peach") should override auto-detection.
+        $configuredBase = is_array($site) ? trim((string)($site['base'] ?? ''), '/') : '';
+        if ($configuredBase !== '') {
+            $base = '/' . $configuredBase;
+        } else {
+            // Auto-detected install subfolder (see base_path.php), same value
+            // the router strips from every request. Falls back to detecting
+            // fresh here for callers outside the request lifecycle.
+            $base = (string)($GLOBALS['fp_base_path'] ?? (function_exists('fp_base_path') ? fp_base_path($server) : ''));
         }
         return rtrim($scheme . '://' . $host . $base, '/');
     }

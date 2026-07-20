@@ -207,7 +207,13 @@ class ThemeComponentRegistryTest extends TestCase
 
         $this->assertTrue($this->reg->delete('kit', 'feature'));
         $this->assertFileDoesNotExist($this->themesDir . '/kit/templates/components/feature.json');
-        $this->assertNull($this->reg->find('kit', 'feature'));
+        // delete() only removes the sidecar manifest, not the .twig file — and
+        // since manifest-less components are still listed (any template under
+        // templates/components/ is a component whether registered or not),
+        // `find` now returns the bare manifest-less entry, not null.
+        $found = $this->reg->find('kit', 'feature');
+        $this->assertNotNull($found);
+        $this->assertFalse($found['has_manifest']);
     }
 
     public function testDeleteUnknownReturnsFalse(): void

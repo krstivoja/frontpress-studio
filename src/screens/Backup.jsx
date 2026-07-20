@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, getCsrf } from '../lib/api.js';
+import { api, getCsrf, ADMIN_BASE } from '../lib/api.js';
 import { useFileUpload } from '../lib/hooks.js';
 import { useToast } from '../lib/toast.jsx';
 import { formatBytes } from '../lib/utils.js';
@@ -19,7 +19,7 @@ export default function Backup() {
   // Local UI state — which destination is in front. Plain useState (not a
   // route) since the choice is ephemeral and doesn't need to survive reloads.
   const [activeTab, setActiveTab] = useState('local');
-  const restoreUpload = useFileUpload({ endpoint: '/admin/api/backup/restore', fileField: 'backup' });
+  const restoreUpload = useFileUpload({ endpoint: `${ADMIN_BASE}/admin/api/backup/restore`, fileField: 'backup' });
 
   const { data, isLoading } = useQuery({
     queryKey: ['backup'],
@@ -29,7 +29,7 @@ export default function Backup() {
   async function download(scope) {
     setBusy(true);
     try {
-      const res = await fetch('/admin/api/backup/download', {
+      const res = await fetch(`${ADMIN_BASE}/admin/api/backup/download`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },

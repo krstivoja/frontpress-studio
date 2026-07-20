@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import Editor from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor.css';
-import { getCsrf } from './api.js';
+import { getCsrf, ADMIN_BASE } from './api.js';
 
 /**
  * Mount and own a Toast UI Editor instance for the page editor.
@@ -92,7 +92,7 @@ export function useToastUiEditor({
           fd.append('file', blob);
           const path = pagePathRef.current;
           if (path) fd.append('page_path', path);
-          fetch('/admin/api/media', {
+          fetch(`${ADMIN_BASE}/admin/api/media`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'X-CSRF-Token': getCsrf() },

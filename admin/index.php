@@ -2,12 +2,24 @@
 
 declare(strict_types=1);
 
-define('FRONTPRESS_BOOT', true);
+// Guarded: index.php's webserver-agnostic dispatch (see there) already
+// defines this when it hands a fallen-through /admin/* request here.
+if (!defined('FRONTPRESS_BOOT')) {
+    define('FRONTPRESS_BOOT', true);
+}
 
 $appRoot = dirname(__DIR__);
 $cmsRoot = $appRoot . '/cms';
 require_once $cmsRoot . '/vendor/autoload.php';
+require_once $cmsRoot . '/lib/base_path.php';
 require_once $cmsRoot . '/lib/template_helpers.php';
+
+// Set when index.php dispatched here; compute it ourselves when Apache/nginx
+// routed straight to admin/index.php instead (the normal case in production).
+if (!isset($GLOBALS['fp_base_path'])) {
+    $GLOBALS['fp_base_path'] = fp_base_path($_SERVER);
+}
+$basePath = $GLOBALS['fp_base_path'];
 
 spl_autoload_register(function ($class) use ($cmsRoot) {
     if (str_starts_with($class, 'MD\\')) {
@@ -134,7 +146,10 @@ if ($ADMIN_PASS_HASH === '') {
 
 // ── Routing ──────────────────────────────────────────────────────────────────
 
-$uri    = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if ($basePath !== '' && is_string($uri) && str_starts_with($uri, $basePath)) {
+    $uri = substr($uri, strlen($basePath)) ?: '/';
+}
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Shared config bag used by both the JSON API and the GitHub OAuth

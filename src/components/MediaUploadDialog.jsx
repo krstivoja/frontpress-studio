@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFileUpload } from '../lib/hooks.js';
+import { ADMIN_BASE } from '../lib/api.js';
 import { useToast } from '../lib/toast.jsx';
 import { extLabel, isImageFile } from '../lib/utils.js';
 import { Alert, Button, Dropzone } from './ui/index.js';
@@ -22,7 +23,7 @@ export default function MediaUploadDialog({ open, onClose, initialFiles }) {
   const toast = useToast();
 
   const { upload, busy } = useFileUpload({
-    endpoint: '/admin/api/media',
+    endpoint: `${ADMIN_BASE}/admin/api/media`,
     invalidate: [['media']],
   });
 

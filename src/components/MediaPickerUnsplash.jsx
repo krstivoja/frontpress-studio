@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api.js';
+import { api, ADMIN_BASE } from '../lib/api.js';
 import { Alert, Button, Input, Select } from './ui/index.js';
 
 const PER_PAGE = 18;
@@ -102,7 +102,7 @@ export default function MediaPickerUnsplash({ onPick, pagePath }) {
       <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center text-[13px] text-zinc-600">
         Add an Unsplash Access Key under{' '}
         <a
-          href="/admin/#/settings/integrations"
+          href={`${ADMIN_BASE}/admin/#/settings/integrations`}
           className="text-zinc-900 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-900"
         >Settings → Integrations</a>{' '}
         to enable photo search here.

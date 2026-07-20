@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api, getCsrf } from '../../lib/api.js';
+import { api, getCsrf, ADMIN_BASE } from '../../lib/api.js';
 import { useToast } from '../../lib/toast.jsx';
 import { Card, Button, Checkbox, Alert } from '../../components/ui/index.js';
 
@@ -62,7 +62,7 @@ export default function Skills() {
     }
     setBusy(true);
     try {
-      const res = await fetch('/admin/api/skills/download', {
+      const res = await fetch(`${ADMIN_BASE}/admin/api/skills/download`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },

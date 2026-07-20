@@ -2,6 +2,15 @@
 
 declare(strict_types=1);
 
+define('FRONTPRESS_BOOT', true);
+require __DIR__ . '/cms/lib/base_path.php';
+
+// Install subfolder (e.g. '/peach' for https://host/peach/), auto-detected
+// from SCRIPT_NAME so no config is needed. '' for root installs. Stashed in
+// $GLOBALS so asset_url(), admin_edit_button() and Url::origin() agree with
+// the router without each re-deriving it.
+$GLOBALS['fp_base_path'] = fp_base_path($_SERVER);
+
 // Webserver-agnostic admin dispatch: if a request to /admin/* falls
 // through to this front controller (Local by Flywheel, shared-host
 // nginx defaults, anywhere without a dedicated `location /admin { ... }`
@@ -9,16 +18,15 @@ declare(strict_types=1);
 // the box without site-config edits.
 //
 // Done before anything else so admin/index.php owns the session, headers,
-// and FRONTPRESS_BOOT define on its own — no double session_start, no
-// constant redeclare notice.
+// and session_start on its own — no double session_start.
 $_fp_path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+if ($GLOBALS['fp_base_path'] !== '' && str_starts_with($_fp_path, $GLOBALS['fp_base_path'])) {
+    $_fp_path = substr($_fp_path, strlen($GLOBALS['fp_base_path'])) ?: '/';
+}
 if ($_fp_path === '/admin' || str_starts_with($_fp_path, '/admin/')) {
     require __DIR__ . '/admin/index.php';
     exit;
 }
-unset($_fp_path);
-
-define('FRONTPRESS_BOOT', true);
 
 session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'httponly' => true, 'samesite' => 'Strict']);
 session_start();
@@ -28,7 +36,8 @@ require __DIR__ . '/bootstrap.php';
 $GLOBALS['admin_logged_in'] = !empty($_SESSION['admin_user']);
 $GLOBALS['admin_edit_path'] = null;
 
-$url = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+$url = $_fp_path;
+unset($_fp_path);
 
 // ── /uploads/* — image-only static serve ──────────────────────────────────────
 // Resolution order:

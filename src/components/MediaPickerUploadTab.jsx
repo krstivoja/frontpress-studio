@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFileUpload } from '../lib/hooks.js';
+import { ADMIN_BASE } from '../lib/api.js';
 import { Alert, Dropzone } from './ui/index.js';
 
 // Upload tab for the MediaPicker — drop-zone + click-to-pick. On a successful
@@ -8,7 +9,7 @@ import { Alert, Dropzone } from './ui/index.js';
 // reader users hear the same beats sighted users see.
 export default function MediaPickerUploadTab({ onPick, pagePath }) {
   const { upload, busy, error } = useFileUpload({
-    endpoint: '/admin/api/media',
+    endpoint: `${ADMIN_BASE}/admin/api/media`,
     extraFields: pagePath ? { page_path: pagePath } : {},
     invalidate: [['media']],
   });

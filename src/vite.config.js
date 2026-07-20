@@ -37,7 +37,13 @@ function phpHotFile() {
 
 export default defineConfig(({ command }) => ({
   plugins: [react(), tailwindcss(), phpHotFile()],
-  base: command === 'build' ? '/admin/assets/' : '/',
+  // Relative build base: the actual /admin/assets/ prefix depends on the
+  // install's subfolder (auto-detected server-side by cms/lib/base_path.php)
+  // and is applied when PHP emits the entry <script>/<link> tags
+  // (cms/lib/Vite.php). Chunk-to-chunk references then resolve relative to
+  // wherever those files are actually served from — same build works at any
+  // install path, no rebuild needed per site.
+  base: command === 'build' ? '' : '/',
   build: {
     outDir: path.resolve(__dirname, '../admin/assets'),
     // Drop the inner `assets/` subdir Vite adds by default — hashed files

@@ -41,7 +41,8 @@ class GithubOAuth
 
         $scheme    = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host      = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $returnUrl = $scheme . '://' . $host . '/admin/github/receive';
+        $base      = (string)($GLOBALS['fp_base_path'] ?? '');
+        $returnUrl = $scheme . '://' . $host . $base . '/admin/github/receive';
 
         // Standard (not URL-safe) base64 — the Worker decodes with atob().
         $state = base64_encode(json_encode([
@@ -116,13 +117,15 @@ class GithubOAuth
 
     private static function bounceToLogin(): never
     {
-        header('Location: /admin/#/login', true, 302);
+        $base = (string)($GLOBALS['fp_base_path'] ?? '');
+        header('Location: ' . $base . '/admin/#/login', true, 302);
         exit;
     }
 
     private static function redirectBack(string $key, string $value): never
     {
-        $back = '/admin/#/backup?' . urlencode($key) . '=' . urlencode($value);
+        $base = (string)($GLOBALS['fp_base_path'] ?? '');
+        $back = $base . '/admin/#/backup?' . urlencode($key) . '=' . urlencode($value);
         header('Location: ' . $back, true, 302);
         exit;
     }

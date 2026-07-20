@@ -57,7 +57,12 @@ RedirectMatch 404 (?i)^/(bootstrap|config|sample\.config|router)\.php$
 
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteBase /
+
+# No RewriteBase, and every substitution below is relative (no leading
+# slash) — Apache resolves a relative substitution against the physical
+# directory this .htaccess lives in, whatever that is. That's what makes a
+# subfolder install (e.g. https://host/peach/) work with zero config: the
+# same rules apply whether FrontPress sits at the domain root or nested.
 
 # Belt-and-braces: block PHP execution under any uploads path.
 RewriteRule ^.+/uploads/.*\.(php[0-9]?|phtml|phar)$ - [F,L,NC]
@@ -65,11 +70,11 @@ RewriteRule ^.+/uploads/.*\.(php[0-9]?|phtml|phar)$ - [F,L,NC]
 # Admin SPA: virtual URLs under /admin/ route to admin/index.php.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^admin/ /admin/index.php [L,QSA]
+RewriteRule ^admin/ admin/index.php [L,QSA]
 
 # Front controller for everything else.
 RewriteRule ^index\.php$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.php [L]
+RewriteRule . index.php [L]
 </IfModule>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, getCsrf } from '../../lib/api.js';
+import { api, getCsrf, ADMIN_BASE } from '../../lib/api.js';
 import { useFileUpload } from '../../lib/hooks.js';
 import { Alert, Badge, Button, Card, Dropzone } from '../../components/ui/index.js';
 
@@ -11,7 +11,7 @@ export default function Themes() {
   const [notice, setNotice] = useState(null);
   const [downloading, setDownloading] = useState(null);
   const upload = useFileUpload({
-    endpoint: '/admin/api/themes/upload',
+    endpoint: `${ADMIN_BASE}/admin/api/themes/upload`,
     fileField: 'theme',
     invalidate: [['themes']],
   });
@@ -42,7 +42,7 @@ export default function Themes() {
     setDownloading(slug);
     setError(null);
     try {
-      const res = await fetch('/admin/api/themes/download', {
+      const res = await fetch(`${ADMIN_BASE}/admin/api/themes/download`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrf() },
